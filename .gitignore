@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+artifacts/
+memorias_perdidas_pacote_completo/
+*.log
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+

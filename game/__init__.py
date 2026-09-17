@@ -1,0 +1,1 @@
+"""Memórias Perdidas — MVP acadêmico."""

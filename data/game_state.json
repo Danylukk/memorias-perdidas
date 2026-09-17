@@ -1,0 +1,8 @@
+{
+  "kael": {
+    "nome": "Kael", "vida": 100, "energia": 100,
+    "empatia": 0, "agressividade": 0, "curiosidade": 0,
+    "egoismo": 0, "lealdade": 0, "fragmentos": 0
+  },
+  "situacao": "Kael acordou sem memória nas ruínas após uma grande batalha e encontrou Darian, um soldado gravemente ferido. Somente Kael e Darian estão nesta cena."
+}
