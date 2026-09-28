@@ -1,13 +1,19 @@
+"""Telas Pygame."""
 import pygame
 
-from game.screens.ui import GOLD, MUTED, RED, background, button, dialogue_panel, label, panel, paragraph, ruins_scene
-from game.systems.choices import CHOICES
+from game.screens.ui import GOLD, MUTED, RED, background, bar, button, dialogue_panel, label, panel, paragraph, ruins_scene
+from game.systems.choices import ROUNDS
 from game.systems.encounter import Encounter
+from game.systems.fragments import TOTAL_FRAGMENTS
+
+ROUND_TITLES = ("O despertar", "Sangue e perguntas", "A decisão")
 
 
 class GameplayScreen:
     MENU = pygame.Rect(880, 24, 280, 46)
+    FRAGMENTS = pygame.Rect(880, 610, 280, 50)
     RETRY = pygame.Rect(880, 680, 280, 50)
+    ENDING = pygame.Rect(40, 600, 800, 64)
     CHOICE_RECTS = tuple(pygame.Rect(40 + (i % 2) * 410, 584 + (i // 2) * 72, 390, 58) for i in range(4))
 
     def __init__(self, dialogue_service):
@@ -18,18 +24,27 @@ class GameplayScreen:
         encounter = self.encounter
         if encounter.generation_in_progress:
             return None
+        choices = encounter.current_choices
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 return "menu"
+            if event.key == pygame.K_f:
+                return "fragments"
+            if event.key == pygame.K_RETURN and encounter.finished:
+                return "ending"
             keys = (pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4)
-            if event.key in keys:
-                encounter.choose(keys.index(event.key) + 1)
+            if event.key in keys and keys.index(event.key) < len(choices):
+                encounter.choose(choices[keys.index(event.key)].id)
             if event.key == pygame.K_r:
                 encounter.retry()
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.MENU.collidepoint(event.pos):
                 return "menu"
-            for choice, rect in zip(CHOICES, self.CHOICE_RECTS):
+            if self.FRAGMENTS.collidepoint(event.pos):
+                return "fragments"
+            if encounter.finished and self.ENDING.collidepoint(event.pos):
+                return "ending"
+            for choice, rect in zip(choices, self.CHOICE_RECTS):
                 if rect.collidepoint(event.pos):
                     encounter.choose(choice.id)
             if self.RETRY.collidepoint(event.pos):
@@ -40,60 +55,98 @@ class GameplayScreen:
         self.encounter.update()
 
     @property
+    def failed(self):
+        result = self.encounter.result
+        return result is not None and not result.ok
+
+    @property
     def dialogue_text(self):
         encounter = self.encounter
         if encounter.generation_in_progress:
             return "Darian está pensando..."
         if encounter.result is not None:
-            return encounter.result.text if encounter.result.ok else encounter.result.error
+            # Falha da IA: fala de reserva roteirizada, sempre identificada como tal.
+            return encounter.result.text if encounter.result.ok else encounter.choice.fallback
         return "Você... está vivo?"
 
     def draw(self, surface):
         surface.blit(background(90), (0, 0))
         encounter, player, npc = self.encounter, self.encounter.state.player, self.encounter.state.npc
-        label(surface, "MEMÓRIAS PERDIDAS", (40, 24), 27, GOLD, True)
-        label(surface, f"Vida {player.vida}/100   Energia {player.energia}/100   Fragmentos {player.fragmentos}/12", (40, 68), 18)
+        label(surface, "MEMÓRIAS PERDIDAS", (40, 20), 27, GOLD, True)
+        label(surface, "Vida", (40, 62), 16)
+        bar(surface, pygame.Rect(90, 64, 150, 14), player.vida, (160, 45, 45))
+        label(surface, f"{player.vida}", (248, 62), 16)
+        label(surface, "Energia", (300, 62), 16)
+        bar(surface, pygame.Rect(376, 64, 150, 14), player.energia, (60, 100, 170))
+        label(surface, f"{player.energia}", (534, 62), 16)
+        label(surface, f"Fragmentos: {player.fragmentos}/{TOTAL_FRAGMENTS}", (600, 62), 16, GOLD)
         button(surface, self.MENU, "Voltar ao menu  [Esc]", not encounter.generation_in_progress)
         surface.blit(self.scene, (40, 115))
-        label(surface, "RUÍNAS / APÓS A BATALHA", (40, 96), 16)
+        shown_round = min(encounter.round_index + (0 if encounter.generation_in_progress or encounter.finished else 1),
+                          len(ROUNDS)) or 1
+        label(surface, f"RUÍNAS / RODADA {shown_round}/{len(ROUNDS)} — {ROUND_TITLES[shown_round - 1].upper()}",
+              (40, 94), 16)
         label(surface, "KAEL", (268, 372), 16, GOLD)
         label(surface, "DARIAN", (566, 372), 16, GOLD)
+        self._draw_side_panel(surface, player, npc)
+        self._draw_dialogue(surface)
 
-        panel(surface, pygame.Rect(880, 115, 280, 544))
-        label(surface, "KAEL", (900, 137), 24, GOLD, True)
+        choices = encounter.current_choices
+        if encounter.finished:
+            button(surface, self.ENDING, "Ver desfecho  [Enter]", selected=True)
+        else:
+            displayed = choices or ROUNDS[max(0, encounter.round_index - 1)]
+            for index, (choice, rect) in enumerate(zip(displayed, self.CHOICE_RECTS)):
+                button(surface, rect, f"{index + 1}. {choice.label}", bool(choices), encounter.choice == choice)
+        button(surface, self.FRAGMENTS, "Fragmentos  [F]", not encounter.generation_in_progress)
+        if self.failed and not encounter.generation_in_progress:
+            button(surface, self.RETRY, "Tentar IA de novo [R]")
+        label(surface, self._footer(), (40, 754), 16, MUTED)
+
+    def _draw_side_panel(self, surface, player, npc):
+        panel(surface, pygame.Rect(880, 115, 280, 480))
+        label(surface, "KAEL", (900, 130), 24, GOLD, True)
         for index, (name, value) in enumerate([
             ("Empatia", player.empatia), ("Agressividade", player.agressividade),
             ("Curiosidade", player.curiosidade), ("Egoísmo", player.egoismo), ("Lealdade", player.lealdade),
         ]):
-            label(surface, f"{name:<15}{value}", (900, 187 + index * 33), 18)
-        pygame.draw.line(surface, MUTED, (900, 368), (1138, 368))
-        label(surface, "DARIAN / SOLDADO", (900, 390), 20, GOLD)
-        label(surface, "Gravemente ferido", (900, 430), 18)
-        label(surface, f"Confiança: {npc.confianca_em_kael}", (900, 466), 20)
-        paragraph(surface, "Seu passado permanece oculto. Nenhum fragmento foi desbloqueado.",
-                  pygame.Rect(900, 523, 235, 120), 18, MUTED)
+            label(surface, f"{name:<15}{value}", (900, 172 + index * 28), 18)
+        pygame.draw.line(surface, MUTED, (900, 318), (1138, 318))
+        label(surface, "DARIAN / SOLDADO", (900, 330), 20, GOLD)
+        label(surface, npc.estado.capitalize(), (900, 362), 18)
+        label(surface, f"Confiança: {npc.confianca_em_kael}", (900, 390), 20)
+        bar(surface, pygame.Rect(900, 420, 238, 10), npc.confianca_em_kael, GOLD)
+        pygame.draw.line(surface, MUTED, (900, 444), (1138, 444))
+        new = self.encounter.new_memories
+        if new:
+            label(surface, "MEMÓRIA RECUPERADA", (900, 456), 18, GOLD)
+            titles = ", ".join(m.fragment.titulo for m in new)
+            paragraph(surface, f"{titles}. Abra Fragmentos [F] para ler.", pygame.Rect(900, 484, 238, 100), 17)
+        else:
+            paragraph(surface, "Algumas escolhas despertam fragmentos do passado de Kael.",
+                      pygame.Rect(900, 460, 238, 120), 17, MUTED)
 
+    def _draw_dialogue(self, surface):
+        encounter = self.encounter
         dialogue_panel(surface, pygame.Rect(40, 403, 800, 170))
-        failed = encounter.result is not None and not encounter.result.ok
+        failed = self.failed and not encounter.generation_in_progress
         if failed:
-            heading = "FALHA NA GERAÇÃO / nenhuma fala recebida"
+            heading = "DARIAN / fala de reserva (roteirizada) — IA indisponível"
         elif encounter.result is not None or encounter.generation_in_progress:
             heading = "DARIAN / Resposta narrativa — ChatGPT (LLM)"
         else:
             heading = "DARIAN / abertura roteirizada"
-        label(surface, heading, (58, 430), 17, RED if failed else GOLD)
-        paragraph(surface, self.dialogue_text, pygame.Rect(58, 464, 764, 96), 20, RED if failed else (225, 220, 205))
-        for choice, rect in zip(CHOICES, self.CHOICE_RECTS):
-            button(surface, rect, f"{choice.id}. {choice.label}", encounter.choice is None,
-                   encounter.choice == choice)
-        if failed:
-            button(surface, self.RETRY, "Tentar novamente [R]")
+        label(surface, heading, (62, 436), 17, RED if failed else GOLD)
+        if encounter.choice is not None:
+            label(surface, f"Kael: {encounter.choice.label}", (62, 460), 15, MUTED)
+        paragraph(surface, self.dialogue_text, pygame.Rect(62, 484, 756, 76), 20, (225, 220, 205))
+
+    def _footer(self):
+        encounter = self.encounter
         if encounter.generation_in_progress:
-            footer = "Gerando resposta · aguarde. Você pode fechar a janela a qualquer momento."
-        elif failed:
-            footer = "Efeitos mantidos. Repetir a geração não aplica os atributos novamente."
-        elif encounter.result is not None:
-            footer = "Fim deste encontro do MVP. Volte ao menu e inicie um Novo Jogo para explorar outra escolha."
-        else:
-            footer = "Escolha com o mouse ou teclas 1–4. Resposta narrativa — ChatGPT (LLM)."
-        label(surface, footer, (40, 754), 16, MUTED)
+            return "Gerando resposta · aguarde. Você pode fechar a janela a qualquer momento."
+        if self.failed:
+            return "IA indisponível: fala de reserva exibida. Continue ou tente a IA de novo (efeitos mantidos)."
+        if encounter.finished:
+            return "O encontro terminou. Veja o desfecho de Kael."
+        return "Escolha com o mouse ou teclas 1–4. Respostas de Darian geradas por ChatGPT (LLM)."

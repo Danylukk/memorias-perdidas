@@ -133,3 +133,39 @@ def ruins_scene():
     fit_image(scene, asset("characters/kael.png"), pygame.Rect(125, 2, 245, 250))
     fit_image(scene, asset("characters/darian.png"), pygame.Rect(420, 30, 245, 250))
     return scene
+
+
+def bar(surface, rect, value, color, maximum=100):
+    """Barra de HUD (vida/energia), como no mockup de gameplay."""
+    pygame.draw.rect(surface, PANEL, rect)
+    filled = rect.copy()
+    filled.width = round(rect.width * max(0, min(value, maximum)) / maximum)
+    pygame.draw.rect(surface, color, filled)
+    pygame.draw.rect(surface, LINE, rect, 1)
+
+
+@lru_cache(maxsize=2)
+def fragment_art(size):
+    """Recorte do cenário oficial usado como arte dos fragmentos desbloqueados."""
+    source = asset("backgrounds/bg_ruinas_principal.png")
+    crop = min(source.get_width(), source.get_height())
+    square = source.subsurface(pygame.Rect((source.get_width() - crop) // 2, 0, crop, crop))
+    return pygame.transform.smoothscale(square, size)
+
+
+def fragment_card(surface, rect, title, unlocked, selected=False):
+    panel(surface, rect)
+    art = pygame.Rect(rect.x + 6, rect.y + 6, rect.width - 12, rect.height - 40)
+    if unlocked:
+        surface.blit(fragment_art(art.size), art)
+    else:
+        pygame.draw.rect(surface, BG, art)
+        lock = pygame.Rect(0, 0, 26, 20)
+        lock.center = art.center
+        pygame.draw.rect(surface, MUTED, lock, 2)
+        pygame.draw.arc(surface, MUTED, pygame.Rect(lock.x + 4, lock.y - 14, 18, 26), 0, 3.1416, 2)
+    text = title if unlocked else "BLOQUEADO"
+    width = font(15).size(text)[0]
+    label(surface, text, (rect.centerx - width // 2, rect.bottom - 28), 15, TEXT if unlocked else MUTED)
+    if selected:
+        pygame.draw.rect(surface, GOLD, rect, 2)

@@ -6,11 +6,13 @@ from typing import Protocol
 
 from game.models.state import GameState
 from game.systems.choices import Choice
+from game.systems.fragments import Fragment
 from game.systems.prompt_builder import DialoguePrompt, PromptBuilder
 
 logger = logging.getLogger(__name__)
 ERROR_MESSAGE = "Não foi possível gerar a resposta de Darian. Verifique a conexão e a configuração da IA."
 MAX_RESPONSE_LENGTH = 360
+MAX_MEMORY_LENGTH = 420
 
 
 class NarrativeClient(Protocol):
@@ -27,14 +29,14 @@ class DialogueResult:
         return bool(self.text) and not self.error
 
 
-def validate_response(raw: str) -> str:
+def validate_response(raw: str, max_sentences: int = 2, max_length: int = MAX_RESPONSE_LENGTH) -> str:
     if not isinstance(raw, str):
         raise ValueError("Resposta inválida.")
     text = " ".join(raw.split())
     # Aspas externas são formatação, não uma terceira frase após o ponto final.
     if len(text) >= 2 and (text[0], text[-1]) in (("“", "”"), ('"', '"'), ("«", "»")):
         text = text[1:-1].strip()
-    if not text or len(text) > MAX_RESPONSE_LENGTH:
+    if not text or len(text) > max_length:
         raise ValueError("Resposta vazia ou longa demais.")
     if any(mark in text for mark in ("{", "}", "[", "]", "`", "<", ">", "**")):
         raise ValueError("Formato inválido.")
@@ -44,7 +46,7 @@ def validate_response(raw: str) -> str:
         raise ValueError("Comando de estado inválido.")
     sentence_text = re.sub(r"\.{2,}", "…", text)
     sentences = [s for s in re.split(r"[.!?]+", sentence_text) if s.strip()]
-    if len(sentences) > 2 or not any(c.isalpha() for c in text):
+    if len(sentences) > max_sentences or not any(c.isalpha() for c in text):
         raise ValueError("Resposta inválida.")
     return text
 
@@ -54,12 +56,18 @@ class DialogueService:
         self.client = client
         self.prompt_builder = prompt_builder or PromptBuilder()
 
-    def respond(self, state: GameState, choice: Choice) -> DialogueResult:
+    def respond(self, state: GameState, choice: Choice, history: tuple[dict, ...] = ()) -> DialogueResult:
+        return self._generate(lambda: self.prompt_builder.build(state, choice, history), validate_response)
+
+    def remember(self, state: GameState, fragment: Fragment) -> DialogueResult:
+        return self._generate(lambda: self.prompt_builder.build_fragment(state, fragment),
+                              lambda raw: validate_response(raw, 4, MAX_MEMORY_LENGTH))
+
+    def _generate(self, build_prompt, validate) -> DialogueResult:
         started = monotonic()
         logger.info("Início da geração narrativa.")
         try:
-            prompt = self.prompt_builder.build(state, choice)
-            text = validate_response(self.client.generate(prompt))
+            text = validate(self.client.generate(build_prompt()))
         except Exception:
             # Fronteira com o provedor: nenhum corpo de erro ou resposta em logs/UI.
             logger.warning("Falha na geração narrativa (%.2fs).", monotonic() - started)

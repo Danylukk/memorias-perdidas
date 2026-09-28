@@ -5,6 +5,8 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame
 
 from game.config import Settings
+from game.screens.ending import EndingScreen
+from game.screens.fragments import FragmentsScreen
 from game.screens.gameplay import GameplayScreen
 from game.screens.menu import MenuScreen
 from game.screens.ui import SIZE, font
@@ -23,6 +25,9 @@ class GameApp:
         self.clock = pygame.time.Clock()
         self.service = dialogue_service or DialogueService(OpenAIClient(Settings.from_env()))
         self.screen = MenuScreen()
+        # Memórias da última partida desta execução; não há save em disco no MVP.
+        self.memories = {}
+        self.return_screen = None
         self.running = True
 
     def viewport(self):
@@ -48,8 +53,21 @@ class GameApp:
             self.screen = GameplayScreen(self.service)
         elif action == "menu":
             self.screen = MenuScreen()
+        elif action == "fragments":
+            self.return_screen = self.screen
+            self.screen = FragmentsScreen(self.current_memories())
+        elif action == "back":
+            self.screen, self.return_screen = self.return_screen or MenuScreen(), None
+        elif action == "ending":
+            self.memories = dict(self.screen.encounter.memories)
+            self.screen = EndingScreen(self.screen.encounter)
         elif action == "quit":
             self.running = False
+
+    def current_memories(self):
+        if isinstance(self.screen, GameplayScreen):
+            self.memories = dict(self.screen.encounter.memories)
+        return self.memories
 
     def draw(self):
         self.screen.draw(self.canvas)

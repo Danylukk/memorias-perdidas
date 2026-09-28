@@ -82,8 +82,12 @@ def test_missing_key_shows_error_and_retry_does_not_reapply(app):
     app.handle_event(click(MenuScreen.NEW_GAME))
     app.handle_event(click(GameplayScreen.CHOICE_RECTS[2]))
     wait_for_ui(app)
-    assert "Não foi possível" in app.screen.dialogue_text
+    # Falha nunca vira fala da IA: a tela mostra a reserva roteirizada, identificada como tal.
+    assert app.screen.failed
+    assert app.screen.dialogue_text == app.screen.encounter.choice.fallback
+    assert "Não foi possível" in app.screen.encounter.result.error
     assert app.screen.encounter.result.text == ""
+    app.draw()
     app.handle_event(click(GameplayScreen.RETRY))
     wait_for_ui(app)
     assert app.screen.encounter.state.player.empatia == 2
@@ -117,3 +121,37 @@ def test_scaled_window_clicks_and_menu_exit(app):
     x, y = MenuScreen.EXIT.center
     app.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(x // 2, y // 2)))
     assert not app.running
+
+
+def test_full_playthrough_fragments_and_ending(app):
+    from game.screens.ending import EndingScreen
+    from game.screens.fragments import FragmentsScreen
+
+    app, client = app
+    app.handle_event(click(MenuScreen.NEW_GAME))
+    for index in (2, 2, 1):  # Ajudar → Estancar → Exigir a verdade
+        app.handle_event(click(GameplayScreen.CHOICE_RECTS[index]))
+        wait_for_ui(app)
+        app.draw()
+    screen = app.screen
+    assert screen.encounter.finished
+    assert set(screen.encounter.memories) == {"darian", "a_batalha"}
+    app.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_f))
+    assert isinstance(app.screen, FragmentsScreen)
+    app.draw()
+    app.handle_event(click(FragmentsScreen.CARD_RECTS[5]))  # slot bloqueado
+    app.draw()
+    app.handle_event(click(FragmentsScreen.BACK))
+    assert app.screen is screen
+    app.handle_event(click(GameplayScreen.ENDING))
+    assert isinstance(app.screen, EndingScreen)
+    assert app.screen.ending.titulo == "O Protetor"
+    app.draw()
+    app.handle_event(click(EndingScreen.MENU))
+    assert isinstance(app.screen, MenuScreen)
+    app.handle_event(click(MenuScreen.FRAGMENTS))
+    assert set(app.screen.memories) == {"darian", "a_batalha"}
+    app.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+    assert isinstance(app.screen, MenuScreen)
+    # 3 falas + 2 fragmentos; nenhuma chamada extra.
+    assert client.generate.call_count == 5
