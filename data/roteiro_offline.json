@@ -3,7 +3,12 @@
   "darian": {
     "abertura": {
       "fala": "Você... está vivo?",
-      "opcoes": [{"ref": 1}, {"ref": 2}, {"ref": 3}, {"ref": 4}]
+      "opcoes": [
+        {"ref": 1},
+        {"ref": 2},
+        {"ref": 3},
+        {"ref": 4}
+      ]
     },
     "turnos": {
       "1": {
@@ -147,10 +152,18 @@
         }
       },
       "5": {
-        "cuidado": {"fala": "Vá, Kael. Procure Lira entre as ruínas... e olhe à sua volta. Este lugar guarda mais de você do que eu."},
-        "perguntas": {"fala": "As respostas estão espalhadas nestas ruínas. Procure... e procure Lira. Ela sabe mais do que diz."},
-        "confronto": {"fala": "Guarde essa lâmina, Kael. Se quer respostas, vasculhe as ruínas. Eu não vou a lugar nenhum."},
-        "abandono": {"fala": "Vá. As ruínas guardam o que você deixa para trás... e um dia vão cobrar."}
+        "cuidado": {
+          "fala": "Vá, Kael. Procure Lira entre as ruínas... e olhe à sua volta. Este lugar guarda mais de você do que eu."
+        },
+        "perguntas": {
+          "fala": "As respostas estão espalhadas nestas ruínas. Procure... e procure Lira. Ela sabe mais do que diz."
+        },
+        "confronto": {
+          "fala": "Guarde essa lâmina, Kael. Se quer respostas, vasculhe as ruínas. Eu não vou a lugar nenhum."
+        },
+        "abandono": {
+          "fala": "Vá. As ruínas guardam o que você deixa para trás... e um dia vão cobrar."
+        }
       }
     }
   },
@@ -162,7 +175,13 @@
         {"texto": "Cuide de Darian primeiro.", "intencao": "empatia"},
         {"texto": "Não preciso de ajuda.", "intencao": "egoismo"},
         {"texto": "Diga o que sabe. Agora.", "intencao": "agressividade"}
-      ]
+      ],
+      "fala_por_darian": {
+        "cuidado": "Kael... Darian disse que você o ajudou. Então ainda existe algo bom aí dentro. Deixe-me ver esses cortes.",
+        "perguntas": "Kael... Darian disse que você o encheu de perguntas. Respostas não curam feridas, sabia? Fique parado.",
+        "confronto": "Afaste essa lâmina, Kael. Darian me contou como você o tratou. Não farei o mesmo com você... ainda.",
+        "abandono": "Então é verdade. Você ia deixar Darian morrer sozinho. Mesmo assim, deixe-me ver esses cortes, Kael."
+      }
     },
     "turnos": {
       "1": {
@@ -242,10 +261,18 @@
         }
       },
       "3": {
-        "cuidado": {"fala": "Então decida, Kael. Em quem vai confiar quando as lembranças voltarem?"},
-        "perguntas": {"fala": "Um dia você vai lembrar de tudo. Espero que, nesse dia, ainda confie em mim."},
-        "confronto": {"fala": "Guarde a lâmina. As respostas que procura não se arrancam de ninguém."},
-        "abandono": {"fala": "Vá, se precisar. Mas o passado vai te alcançar, com ou sem nós."}
+        "cuidado": {
+          "fala": "Então decida, Kael. Em quem vai confiar quando as lembranças voltarem?"
+        },
+        "perguntas": {
+          "fala": "Um dia você vai lembrar de tudo. Espero que, nesse dia, ainda confie em mim."
+        },
+        "confronto": {
+          "fala": "Guarde a lâmina. As respostas que procura não se arrancam de ninguém."
+        },
+        "abandono": {
+          "fala": "Vá, se precisar. Mas o passado vai te alcançar, com ou sem nós."
+        }
       }
     }
   }

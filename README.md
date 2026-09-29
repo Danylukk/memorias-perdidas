@@ -67,16 +67,19 @@ A jornada segue a premissa e o objetivo da CP4 (§1.3 e §1.7):
    com as 4 escolhas do mockup (Quem é você? / Você me conhece? / Ajudar o soldado / Ir embora).
    A cada escolha, o LLM gera a **fala de Darian** e **4 novas respostas curtas para Kael**, na mesma chamada.
 2. **Exploração das ruínas.** Kael caminha pelo cenário (←/→ ou clique) e investiga locais e objetos
-   (E ou botões 1–4): o **estandarte rasgado** desperta *A Ordem de Arkan*; as **espadas cravadas**
-   despertam *A Batalha*. O texto de cada lembrança é escrito pelo LLM.
-3. **Lira (3 turnos).** A curandeira que conhece Kael e evita revelar tudo o que sabe. Mesmo sistema
-   de conversa, com a ficha e os segredos dela.
+   (E ou botões 1–5): o **estandarte rasgado** desperta *A Ordem de Arkan*; as **espadas cravadas**
+   despertam *A Batalha*; o **soldado caído** e o **medalhão** de Kael alteram seu perfil. O texto de
+   cada lembrança é escrito pelo LLM.
+3. **Lira (3 turnos).** A curandeira que conhece Kael e evita revelar tudo o que sabe. Ela **sabe como Kael
+   tratou Darian** (caminho predominante da conversa: ajudou, interrogou, ameaçou ou abandonou): isso muda
+   a fala de abertura dela, a confiança inicial (±10) e entra no contexto enviado ao LLM
+   (`historia_da_partida`).
 4. **Decisão final:** Confiar em Darian, em Lira, nos dois ou seguir sozinho.
 5. **Desfecho:** quem Kael se tornou (atributo dominante), o destino conforme a confiança conquistada e
    os fragmentos recuperados.
 
 Durante a conversa, as opções ficam bloqueadas e aparece **“Darian está pensando...”** (thread separada).
-Os efeitos de cada escolha aparecem acima de Kael; **TAB** abre o perfil completo; **F** abre os Fragmentos;
+Cenas e telas trocam com um fade. Os efeitos de cada escolha aparecem acima de Kael; **TAB** abre o perfil completo; **F** abre os Fragmentos;
 **Esc** volta ao menu (o progresso é salvo). O botão de fechar a janela funciona durante a geração.
 
 ### Regras (sempre em Python)
@@ -95,8 +98,10 @@ de uma lista fixa, validada por JSON Schema; o Python converte a intenção em e
 Escolhas fixas: Quem é você? (Curiosidade +1), Você me conhece? (Curiosidade +2), Ajudar o soldado
 (Empatia +2, Lealdade +1, Confiança +10), Ir embora (Egoísmo +2, Confiança −10) e, da tabela da CP4 §1.6,
 Perguntar sobre o passado (Curiosidade +2) e Ameaçar Darian (Agressividade +2, Empatia −1, Vida −10,
-Confiança −15). Investigar um objeto novo custa Energia −5. Valores entre 0 e 100.
-Confiança inicial: Darian 20, Lira 30.
+Confiança −15). Investigar um objeto que desperta memória custa Energia −5; o soldado caído dá
+Empatia +1 e o medalhão, Curiosidade +1 (uma vez cada). Valores entre 0 e 100.
+Confiança inicial: Darian 20; Lira 30, ajustada pelo tratamento dado a Darian
+(ajudou +10, interrogou 0, ameaçou −5, abandonou −10).
 
 | Fragmento (mockup) | Origem | Como desbloquear |
 | --- | --- | --- |

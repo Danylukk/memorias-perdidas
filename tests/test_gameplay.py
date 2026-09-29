@@ -163,8 +163,9 @@ def test_full_playthrough_with_exploration_lira_and_ending(app):
     assert screen.actions() == ["Explorar as ruínas"]
     app.handle_event(click(GameplayScreen.WIDE))
     assert screen.journey.phase == "exploracao"
-    assert screen.actions() == ["Investigar o estandarte", "Examinar as espadas", "Ver Darian", "Falar com Lira"]
-    app.handle_event(click(GameplayScreen.CHOICE_RECTS[0]))  # Kael caminha até o estandarte
+    assert screen.actions() == ["Estandarte", "Espadas", "Soldado caído", "Medalhão", "Falar com Lira"]
+    assert screen.button_rects() == GameplayScreen.EXPLORE_RECTS
+    app.handle_event(click(GameplayScreen.EXPLORE_RECTS[0]))  # Kael caminha até o estandarte
     assert screen.walk_target is not None
     wait_for_ui(app)
     assert "ordem_de_arkan" in screen.journey.memories
@@ -182,9 +183,15 @@ def test_full_playthrough_with_exploration_lira_and_ending(app):
     app.draw()
     app.handle_event(click(FragmentsScreen.BACK))
     assert app.screen is screen
-    app.handle_event(click(GameplayScreen.CHOICE_RECTS[3]))  # Falar com Lira
+    curiosity = screen.journey.player.curiosidade
+    app.handle_event(click(GameplayScreen.EXPLORE_RECTS[3]))  # Medalhão: sem andar
+    assert screen.walk_target is None and screen.journey.message.heading == "Medalhão"
+    assert screen.journey.player.curiosidade == curiosity + 1
+    app.handle_event(click(GameplayScreen.EXPLORE_RECTS[4]))  # Falar com Lira
     wait_for_ui(app)
     assert screen.journey.phase == "lira"
+    assert screen.journey.darian_outcome == "cuidado"
+    assert screen.dialogue_text.startswith("Kael... Darian disse que você o ajudou.")
     for _ in range(3):
         app.handle_event(click(GameplayScreen.CHOICE_RECTS[1]))
         wait_for_ui(app)
@@ -246,14 +253,52 @@ def test_offline_mode_without_key_plays_to_the_end(monkeypatch, tmp_path):
         app.draw()
         app.handle_event(click(MenuScreen.NEW_GAME))
         screen = app.screen
-        while screen.journey.phase != "fim":
-            index = 3 if screen.journey.phase == "exploracao" else 0
+        for _ in range(40):
+            if screen.journey.phase == "fim":
+                break
+            index = 4 if screen.journey.phase == "exploracao" else 0
             app.handle_event(click(screen.button_rects()[index]))
             wait_for_ui(app)
             assert not screen.failed
             app.draw()
+        assert screen.journey.phase == "fim"
         app.handle_event(click(GameplayScreen.WIDE))
         assert isinstance(app.screen, EndingScreen)
         app.draw()
     finally:
         app.close()
+
+
+def test_fade_between_screens_and_scenes(app):
+    from game.screens import ui
+
+    app, _ = app
+    before = app.fade_t0
+    app.handle_event(click(MenuScreen.NEW_GAME))
+    assert app.fade_t0 > before
+    app.fade_t0 = time.monotonic()
+    app.draw()
+    dark = app.canvas.get_at((640, 300))
+    app.fade_t0 = time.monotonic() - ui.FADE_SECONDS
+    app.draw()
+    assert sum(app.canvas.get_at((640, 300))[:3]) > sum(dark[:3])
+    screen = app.screen
+    for _ in range(5):
+        app.handle_event(click(GameplayScreen.CHOICE_RECTS[2]))
+        wait_for_ui(app)
+    t0 = screen._fade_t0
+    app.handle_event(click(GameplayScreen.WIDE))  # Darian → exploração
+    assert screen.journey.phase == "exploracao" and screen._fade_t0 > t0
+
+
+def test_scene_fade_darkens_then_clears(app):
+    from game.screens import ui
+
+    screen = GameplayScreen(MagicMock(), offline=True, animate_text=False)
+    canvas = pygame.Surface(SIZE)
+    screen._fade_t0 = -10.0
+    screen.draw(canvas)
+    clear = sum(canvas.get_at((640, 300))[:3])
+    screen._fade_t0 = time.monotonic() - ui.FADE_SECONDS * 0.4
+    screen.draw(canvas)
+    assert sum(canvas.get_at((640, 300))[:3]) < clear

@@ -245,6 +245,16 @@ def credits_footer(surface, items, quote=True):
         divider(surface, 1120, 1240, FOOTER.y + 58, (110, 92, 60))
 
 
+FADE_SECONDS = 0.45
+
+
+def fade_in(surface, started, now):
+    """Escurecimento que clareia após uma troca de cena (transição entre telas e fases)."""
+    progress = (now - started) / FADE_SECONDS
+    if 0 <= progress < 1:
+        dim(surface, round(255 * (1 - progress)))
+
+
 def dim(surface, alpha=150):
     shade = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
     shade.fill((0, 0, 0, alpha))

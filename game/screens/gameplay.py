@@ -6,19 +6,20 @@ import pygame
 
 from game.screens.ui import (ENERGY, GOLD, GOLD_BRIGHT, LIFE, MUTED, NAME_COLORS, RED, TEXT, background, bar,
                              button, credits_footer, diamond, divider, fragment_counter, frame, label, panel,
-                             paragraph, portrait, sprite)
+                             paragraph, portrait, sprite, fade_in)
 from game.systems.ending import DECISIONS
 from game.systems.fragments import TOTAL_FRAGMENTS
-from game.systems.journey import HOTSPOTS, Journey
+from game.systems.journey import HOTSPOTS, Journey, get_hotspot
 from game.systems.script import BRANCH_NAMES
 
 ATTRIBUTES = (("empatia", "Empatia"), ("agressividade", "Agressividade"), ("curiosidade", "Curiosidade"),
               ("egoismo", "Egoísmo"), ("lealdade", "Lealdade"))
 NPC_X = {"darian": 780, "lira": 1085}
-MARKER_Y = {"estandarte": 128, "espadas": 395, "darian": 262, "lira": 178}
+MARKER_Y = {"estandarte": 128, "espadas": 395, "darian": 262, "soldado": 420, "lira": 178}
 CONVERSATION_X = {"darian": 520, "lira": 965}
-HOTSPOT_ACTIONS = {"estandarte": "Investigar o estandarte", "espadas": "Examinar as espadas",
-                   "darian": "Ver Darian", "lira": "Falar com Lira"}
+# Botões da exploração (Darian também pode ser visto clicando nele ou com E).
+EXPLORE_BUTTONS = (("estandarte", "Estandarte"), ("espadas", "Espadas"), ("soldado", "Soldado caído"),
+                   ("medalhao", "Medalhão"), ("lira", "Falar com Lira"))
 
 
 class GameplayScreen:
@@ -26,6 +27,7 @@ class GameplayScreen:
     DIALOGUE = pygame.Rect(205, 452, 867, 116)
     CHOICE_RECTS = tuple(pygame.Rect(216 + i * 215, 580, 202, 42) for i in range(4))
     WIDE = pygame.Rect(430, 580, 418, 42)
+    EXPLORE_RECTS = tuple(pygame.Rect(216 + i * 171, 580, 162, 42) for i in range(5))
     RETRY = pygame.Rect(1090, 470, 170, 36)
     FEET_Y = 452
     SCALE = 0.185
@@ -46,6 +48,8 @@ class GameplayScreen:
         self._text_key = None
         self._text_start = 0.0
         self._last = monotonic()
+        self._phase = self.journey.phase
+        self._fade_t0 = -1.0
 
     # --- Leitura de estado ---
     @property
@@ -78,13 +82,15 @@ class GameplayScreen:
                 return ["Explorar as ruínas" if journey.phase == "darian" else "Decidir em quem confiar"]
             return [choice.label for choice in encounter.current_choices]
         if journey.phase == "exploracao":
-            return [HOTSPOT_ACTIONS[h.id] for h in HOTSPOTS]
+            return [text for _, text in EXPLORE_BUTTONS]
         if journey.phase == "decisao":
             return [text for _, text in DECISIONS]
         return ["Ver desfecho"]
 
     def button_rects(self):
         count = len(self.actions())
+        if count == 5:
+            return self.EXPLORE_RECTS
         return (self.WIDE,) if count == 1 else self.CHOICE_RECTS[:count]
 
     # --- Entrada ---
@@ -104,7 +110,7 @@ class GameplayScreen:
                 self._text_start = 0.0
             if event.key == pygame.K_r:
                 self.retry()
-            keys = (pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4)
+            keys = (pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5)
             if event.key in keys:
                 return self.activate(keys.index(event.key))
             if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_e):
@@ -124,7 +130,7 @@ class GameplayScreen:
                 if rect.collidepoint(event.pos):
                     return self.activate(index)
             if journey.phase == "exploracao" and event.pos[1] < self.DIALOGUE.top:
-                target = next((h for h in HOTSPOTS if self.hotspot_rect(h).collidepoint(event.pos)), None)
+                target = next((h for h in self.placed() if self.hotspot_rect(h).collidepoint(event.pos)), None)
                 self.walk_to(target.x if target else event.pos[0], target.id if target else None)
         return None
 
@@ -142,8 +148,11 @@ class GameplayScreen:
                 self._add_feedback(before)
             return None
         if journey.phase == "exploracao":
-            hotspot = HOTSPOTS[index]
-            self.walk_to(hotspot.x, hotspot.id)
+            hotspot = get_hotspot(EXPLORE_BUTTONS[index][0])
+            if hotspot.x is None:
+                journey.interact(hotspot.id)  # o medalhão está com Kael: não precisa andar
+            else:
+                self.walk_to(hotspot.x, hotspot.id)
         elif journey.phase == "decisao":
             journey.decide(DECISIONS[index][0])
             journey.persist()
@@ -160,8 +169,12 @@ class GameplayScreen:
         self.walk_target = max(60.0, min(1220.0, float(x) - offset))
         self.pending = hotspot_id
 
+    @staticmethod
+    def placed():
+        return tuple(h for h in HOTSPOTS if h.x is not None)
+
     def nearest_hotspot(self):
-        nearest = min(HOTSPOTS, key=lambda h: abs(h.x - self.kael_x))
+        nearest = min(self.placed(), key=lambda h: abs(h.x - self.kael_x))
         return nearest if abs(nearest.x - self.kael_x) <= self.REACH else None
 
     def hotspot_rect(self, hotspot):
@@ -201,6 +214,9 @@ class GameplayScreen:
             self.kael_x = max(60.0, min(1220.0, self.kael_x + direction * self.WALK_SPEED * max(dt, 0.016)))
 
     def _after_phase_change(self):
+        if self.journey.phase != self._phase:
+            # Fade entre as cenas da jornada: Darian → exploração → Lira → decisão.
+            self._phase, self._fade_t0 = self.journey.phase, monotonic()
         if self.journey.phase == "lira":
             self.kael_x, self.facing_left = float(CONVERSATION_X["lira"]), False
         self.journey.persist()
@@ -242,6 +258,7 @@ class GameplayScreen:
         label(surface, "NUNCA MORREM.", (1176, 621), 12, (170, 162, 146), align="center", shadow=True)
         credits_footer(surface, self._credits(), quote=False)
         self._draw_overlays(surface)
+        fade_in(surface, self._fade_t0, monotonic())
 
     def _credits(self):
         items = [("portraits/kael.png", "Personagem Kael — ChatGPT,\ngeração de imagens"),
@@ -253,17 +270,6 @@ class GameplayScreen:
 
     def _draw_scene(self, surface):
         journey = self.journey
-        if journey.phase == "exploracao":
-            near = self.nearest_hotspot()
-            mouse = pygame.mouse.get_pos() if pygame.mouse.get_focused() else (-1, -1)
-            for hotspot in HOTSPOTS:
-                active = hotspot is near or self.hotspot_rect(hotspot).collidepoint(mouse)
-                done = hotspot.fragmento in journey.memories
-                y = MARKER_Y[hotspot.id]
-                diamond(surface, (hotspot.x, y), 8 if active else 5,
-                        GOLD_BRIGHT if active else (MUTED if done else GOLD))
-                if active:
-                    label(surface, hotspot.nome, (hotspot.x, y - 32), 16, GOLD_BRIGHT, align="center", shadow=True)
         darian = sprite("darian", self.SCALE)
         surface.blit(darian, darian.get_rect(midbottom=(NPC_X["darian"], self.FEET_Y)))
         if journey.phase != "darian":
@@ -271,6 +277,21 @@ class GameplayScreen:
             surface.blit(lira, lira.get_rect(midbottom=(NPC_X["lira"], self.FEET_Y)))
         kael = sprite("kael", self.SCALE, flip=self.facing_left)
         surface.blit(kael, kael.get_rect(midbottom=(round(self.kael_x), self.FEET_Y)))
+        if journey.phase != "exploracao":
+            return
+        # Marcadores por cima dos personagens, para o nome do ponto nunca ficar escondido.
+        near = self.nearest_hotspot()
+        mouse = pygame.mouse.get_pos() if pygame.mouse.get_focused() else (-1, -1)
+        for hotspot in self.placed():
+            active = hotspot is near or self.hotspot_rect(hotspot).collidepoint(mouse)
+            done = hotspot.fragmento in journey.memories or hotspot.id in journey.explored
+            y = MARKER_Y[hotspot.id]
+            diamond(surface, (hotspot.x, y), 8 if active else 5,
+                    GOLD_BRIGHT if active else (MUTED if done else GOLD))
+            if active:
+                text_rect = label(surface, hotspot.nome, (hotspot.x, y - 32), 16, GOLD_BRIGHT, align="center")
+                panel(surface, text_rect.inflate(14, 6), 215)
+                label(surface, hotspot.nome, (hotspot.x, y - 32), 16, GOLD_BRIGHT, align="center")
 
     def _draw_hud(self, surface):
         journey, player = self.journey, self.journey.current_player
@@ -331,7 +352,7 @@ class GameplayScreen:
             label(surface, f"Kael: “{encounter.choice.label}”", (box.x + 24, box.y - 24), 16, GOLD_BRIGHT,
                   italic=True, shadow=True)
         paragraph(surface, self._typed(self.dialogue_text), pygame.Rect(x, box.y + 46, box.width - 175, 54), 20, TEXT)
-        hint = ("←/→ andar · E investigar · 1–4 ir até · F fragmentos · TAB perfil · Esc menu"
+        hint = ("←/→ andar · E investigar · 1–5 ir até · F fragmentos · TAB perfil · Esc menu"
                 if journey.phase == "exploracao" else "1–4 escolher · F fragmentos · TAB perfil · Esc menu")
         label(surface, hint, (self.WIDE.centerx, 626), 12, (170, 162, 146), align="center", shadow=True)
 
@@ -348,8 +369,10 @@ class GameplayScreen:
     def _draw_overlays(self, surface):
         now = monotonic()
         self.feedback = [(text, color, t0) for text, color, t0 in self.feedback if now - t0 < 2.8][-4:]
-        for index, (text, color, t0) in enumerate(reversed(self.feedback)):
-            y = max(96, self.FEET_Y - 290 - index * 22 - (now - t0) * 12)
+        top = self.FEET_Y - 290 - 22 * (len(self.feedback) - 1)
+        for index, (text, color, t0) in enumerate(self.feedback):
+            # Empilhados de cima para baixo, sem sobreposição, subindo devagar enquanto somem.
+            y = max(96 + index * 22, top + index * 22 - (now - t0) * 12)
             label(surface, text, (round(self.kael_x), round(y)), 17, color, bold=True, align="center", shadow=True)
         if self.toast and now - self.toast[1] < 5:
             rect = pygame.Rect(390, 100, 500, 40)

@@ -3,6 +3,7 @@
 Kael desperta e encontra Darian → explora as ruínas (objetos e locais despertam fragmentos) →
 encontra Lira → decide em quem confiar. O estado pertence ao Python; a IA só escreve falas e lembranças.
 """
+from collections import Counter
 from dataclasses import asdict, dataclass, replace
 from queue import Empty, Queue
 from threading import Thread
@@ -14,6 +15,7 @@ from game.systems import save
 from game.systems.encounter import Encounter, recall
 from game.systems.ending import DECISIONS, Ending, compute_ending
 from game.systems.fragments import Memory, get_fragment
+from game.systems.script import branch_of
 
 PHASES = ("darian", "exploracao", "lira", "decisao", "fim")
 
@@ -22,9 +24,10 @@ PHASES = ("darian", "exploracao", "lira", "decisao", "fim")
 class Hotspot:
     id: str
     nome: str
-    x: int
+    x: int | None  # None: ação sobre o próprio Kael (o medalhão que ele carrega)
     narracao: str
     fragmento: str | None = None
+    efeitos: tuple[tuple[str, int], ...] = ()  # aplicados uma única vez
 
 
 # Posições na largura da tela (1280), alinhadas ao cenário oficial das ruínas.
@@ -37,8 +40,33 @@ HOTSPOTS = (
             "a_batalha"),
     Hotspot("darian", "Darian", 780,
             "Darian descansa encostado nas pedras, respirando com dificuldade. Ele acompanha Kael com o olhar."),
+    Hotspot("soldado", "Soldado caído", 945,
+            "Um soldado caído, com a mesma cruz dourada no escudo. Kael fecha os olhos dele em silêncio.",
+            efeitos=(("empatia", 1),)),
+    Hotspot("medalhao", "Medalhão", None,
+            "Kael examina o medalhão antigo em seu pescoço. O metal está frio, gasto de tanto ser apertado.",
+            efeitos=(("curiosidade", 1),)),
     Hotspot("lira", "Lira", 1085, "Uma curandeira de capa verde se aproxima, cuidando dos feridos."),
 )
+# Como Kael tratou Darian (caminho predominante da conversa): contexto da Lira e efeito na confiança dela.
+DARIAN_OUTCOMES = {
+    "cuidado": ("Kael ajudou Darian: cuidou do ferimento dele e ficou ao seu lado.", 10),
+    "perguntas": ("Kael interrogou Darian sobre o passado, sem se comprometer a ajudá-lo.", 0),
+    "confronto": ("Kael ameaçou e pressionou Darian ferido em busca de respostas.", -5),
+    "abandono": ("Kael tentou abandonar Darian gravemente ferido nas ruínas.", -10),
+}
+
+
+def darian_outcome(encounter: Encounter) -> str:
+    """Caminho predominante das escolhas com Darian; em empate, vale o mais recente."""
+    branches = [branch_of(turn.choice) for turn in encounter.turns]
+    if not branches:
+        return "perguntas"
+    counts = Counter(branches)
+    best = max(counts.values())
+    return next(branch for branch in reversed(branches) if counts[branch] == best)
+
+
 EXPLORATION_INTRO = "Explore as ruínas: investigue o que desperta lembranças e procure Lira, a curandeira."
 INVESTIGATION_COST = 5  # energia
 
@@ -64,6 +92,7 @@ class Journey:
         self.memories: dict[str, Memory] = {}
         self.explored: set[str] = set()
         self.decision: str | None = None
+        self.darian_outcome: str | None = None
         self.phase = "darian"
         self.message = Message("Ruínas", EXPLORATION_INTRO)
         self.new_memories: tuple[Memory, ...] = ()
@@ -72,8 +101,13 @@ class Journey:
         self._jobs: Queue[tuple[str, tuple[Memory, ...]]] = Queue(maxsize=1)
 
     def _encounter(self, npc_id: str) -> Encounter:
-        state = GameState(self.player, self.npcs[npc_id], situation(npc_id))
-        return Encounter(self.service, self.offline, state, npc_id, self.memories)
+        history = ()
+        if npc_id == "lira" and self.darian_outcome:
+            history = (DARIAN_OUTCOMES[self.darian_outcome][0],
+                       f"Confiança de Darian em Kael ao fim da conversa: {self.npcs['darian'].confianca_em_kael}.")
+        state = GameState(self.player, self.npcs[npc_id], situation(npc_id), history)
+        variant = self.darian_outcome if npc_id == "lira" else None
+        return Encounter(self.service, self.offline, state, npc_id, self.memories, variant)
 
     # --- Estado exibido ---
     @property
@@ -108,6 +142,12 @@ class Journey:
         state = self.encounter.state
         self.player = state.player
         self.npcs[self.encounter.npc_id] = state.npc
+        if self.encounter.npc_id == "darian":
+            # Consequência que atravessa cenas: Lira sabe como Kael tratou Darian.
+            self.darian_outcome = darian_outcome(self.encounter)
+            lira = self.npcs["lira"]
+            trust = max(0, min(100, lira.confianca_em_kael + DARIAN_OUTCOMES[self.darian_outcome][1]))
+            self.npcs["lira"] = replace(lira, confianca_em_kael=trust)
         self.encounter = None
 
     def interact(self, hotspot_id: str) -> bool:
@@ -120,6 +160,11 @@ class Journey:
             self.encounter = self._encounter("lira")
             return True
         self.message = Message(hotspot.nome, hotspot.narracao)
+        if hotspot.efeitos and hotspot.id not in self.explored:
+            # Cada ponto de interesse altera Kael uma única vez (CP4 §1.5: investigar ruínas).
+            self.explored.add(hotspot.id)
+            updates = {name: max(0, min(100, getattr(self.player, name) + delta)) for name, delta in hotspot.efeitos}
+            self.player = replace(self.player, **updates)
         if hotspot.fragmento is None or hotspot.fragmento in self.memories:
             return True
         # Objetos e locais desbloqueiam lembranças (CP4 §1.5); a regra é do jogo, o texto é da IA.
@@ -182,6 +227,7 @@ class Journey:
             "memories": [m.to_dict() for m in self.memories.values()],
             "explored": sorted(self.explored),
             "decision": self.decision,
+            "darian_outcome": self.darian_outcome,
             "message": asdict(self.message),
             "encounter": self.encounter.to_dict() if self.encounter else None,
         }
@@ -197,6 +243,7 @@ class Journey:
         journey.memories.update({m["fragment"]: Memory.from_dict(m) for m in data["memories"]})
         journey.explored = set(data["explored"])
         journey.decision = data["decision"]
+        journey.darian_outcome = data.get("darian_outcome")
         journey.message = Message(**data["message"])
         journey.encounter = (Encounter.from_dict(service, offline, data["encounter"], journey.memories)
                              if data["encounter"] else None)

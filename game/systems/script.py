@@ -38,10 +38,11 @@ def _options(npc_id: str, turn: int, raw_options) -> tuple[Choice, ...]:
     )
 
 
-def opening(npc_id: str) -> tuple[str, tuple[Choice, ...]]:
-    """Fala inicial do personagem e as opções do 1º turno."""
+def opening(npc_id: str, variant: str | None = None) -> tuple[str, tuple[Choice, ...]]:
+    """Fala inicial do personagem e as opções do 1º turno; `variant` escolhe a fala conforme a história."""
     node = load_script()[npc_id]["abertura"]
-    return node["fala"], _options(npc_id, 0, node["opcoes"])
+    line = node.get("fala_por_darian", {}).get(variant) or node["fala"]
+    return line, _options(npc_id, 0, node["opcoes"])
 
 
 def scripted_turn(turn: int, choice: Choice, npc_id: str = "darian") -> DialogueResult:

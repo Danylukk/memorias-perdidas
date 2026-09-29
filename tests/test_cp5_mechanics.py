@@ -17,7 +17,7 @@ from game.systems.dialogue import DialogueResult, DialogueService, ERROR_MESSAGE
 from game.systems.encounter import Encounter
 from game.systems.ending import DECISIONS, compute_ending
 from game.systems.fragments import FRAGMENTS, Memory, get_fragment, newly_unlocked
-from game.systems.journey import HOTSPOTS, Journey, load_gallery, load_progress
+from game.systems.journey import DARIAN_OUTCOMES, HOTSPOTS, Journey, darian_outcome, load_gallery, load_progress
 from game.systems.openai_client import OpenAIClient
 from game.systems.prompt_builder import PromptBuilder, TURN_SCHEMA
 from game.systems.script import BRANCH_OF_INTENT, load_script, opening, scripted_turn, total_turns
@@ -316,7 +316,7 @@ def test_exploration_rules():
     journey = Journey(MagicMock(), offline=True)
     assert not journey.interact("estandarte")  # antes de terminar a conversa com Darian
     assert not journey.advance()
-    assert [h.id for h in HOTSPOTS] == ["estandarte", "espadas", "darian", "lira"]
+    assert [h.id for h in HOTSPOTS] == ["estandarte", "espadas", "darian", "soldado", "medalhao", "lira"]
     assert not journey.decide("darian")
 
 
@@ -381,3 +381,65 @@ def test_corrupted_save_is_ignored():
     save.write(save.GALLERY, {"x": {"fragment": "inexistente", "text": "", "generated": False}})
     assert load_gallery() == {}
     assert save.load_settings() == save.DEFAULT_SETTINGS
+
+
+# --- Consequências entre cenas: Lira sabe o que Kael fez com Darian ---
+
+def play_darian_path(first_choice, intent):
+    journey = Journey(MagicMock(), offline=True)
+    encounter = journey.encounter
+    encounter.choose(first_choice)
+    settle(journey)
+    while not encounter.finished:
+        choices = encounter.current_choices
+        encounter.choose(next((c for c in choices if c.intent == intent), choices[0]).id)
+        settle(journey)
+    journey.advance()
+    return journey
+
+
+def test_lira_reacts_to_how_kael_treated_darian():
+    helped = play_darian_path(3, "empatia")
+    left = play_darian_path(4, "egoismo")
+    assert (helped.darian_outcome, left.darian_outcome) == ("cuidado", "abandono")
+    assert helped.trust("lira") == 40 and left.trust("lira") == 20  # 30 inicial ±10
+    helped.interact("lira")
+    left.interact("lira")
+    assert helped.encounter.opening_line.startswith("Kael... Darian disse que você o ajudou.")
+    assert left.encounter.opening_line.startswith("Então é verdade. Você ia deixar Darian morrer")
+    assert helped.encounter.state.historia[0] == DARIAN_OUTCOMES["cuidado"][0]
+    assert "Confiança de Darian" in helped.encounter.state.historia[1]
+    context = json.loads(PromptBuilder().build(helped.encounter.state, get_choice(1)).context)
+    assert context["historia_da_partida"] == list(helped.encounter.state.historia)
+    assert "historia_da_partida" in PromptBuilder().build(helped.encounter.state, get_choice(1)).instructions
+    assert json.loads(PromptBuilder().build(new_game(), get_choice(1)).context)["historia_da_partida"] == []
+
+
+def test_darian_outcome_uses_predominant_path_and_survives_save():
+    encounter = Encounter(MagicMock(), offline=True)
+    assert darian_outcome(encounter) == "perguntas"
+    encounter.choose(4)
+    settle(encounter)
+    pick(encounter, "agressividade")
+    assert darian_outcome(encounter) == "confronto"  # empate: vale o mais recente
+    journey = play_darian_path(1, "agressividade")
+    journey.interact("lira")
+    journey.persist()
+    loaded = load_progress(MagicMock(), True)
+    assert loaded.darian_outcome == journey.darian_outcome
+    assert loaded.encounter.opening_line == journey.encounter.opening_line
+    assert loaded.encounter.state.historia == journey.encounter.state.historia
+
+
+def test_medallion_and_fallen_soldier_apply_once():
+    journey = play_darian_path(3, "empatia")
+    player = journey.player
+    assert journey.interact("medalhao") and not journey.busy
+    assert journey.player.curiosidade == player.curiosidade + 1
+    journey.interact("medalhao")
+    assert journey.player.curiosidade == player.curiosidade + 1
+    journey.interact("soldado")
+    journey.interact("soldado")
+    assert journey.player.empatia == player.empatia + 1
+    assert {"medalhao", "soldado"} <= journey.explored
+    assert journey.message.heading == "Soldado caído"

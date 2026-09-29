@@ -18,7 +18,8 @@ Histórico técnico da primeira versão do MVP: ver `RELATORIO_MVP.md`.
 | Menu principal (Figura 4) | `game/screens/menu.py`: logo, Kael, NOVO JOGO, CONTINUAR, FRAGMENTOS (com cristal), CONFIGURAÇÕES e SAIR, com rodapé “Assets gerados por IA” |
 | Gameplay (Figura 5) | `game/screens/gameplay.py`: cena, retrato de Kael com barras de Vida e Energia, cristal com “Fragmentos: x/12”, NPC, caixa de diálogo com retrato e nome, 4 escolhas em linha e rodapé de assets |
 | Fragmentos de Memória (Figura 6) | `game/screens/fragments.py`: grade 4×3 com A Batalha, A Ordem de Arkan, Lira e Darian, espaços bloqueados, painel do fragmento selecionado (imagem, citação e descrição) e botão VOLTAR |
-| Mecânica 1: Exploração | Kael caminha pelas ruínas e investiga o estandarte e as espadas (`journey.py`) |
+| Mecânica 1: Exploração | Kael caminha pelas ruínas e investiga o estandarte, as espadas, o soldado caído e o próprio medalhão (`journey.py`) |
+| Consequências entre cenas | Lira sabe como Kael tratou Darian: fala de abertura, confiança inicial e contexto do LLM mudam (`journey.py`, `prompt_builder.py`) |
 | Mecânica 2: Escolhas narrativas | Cada escolha altera atributos, vida, energia e confiança; a decisão final define em quem Kael confia (`choices.py`, `ending.py`) |
 | Mecânica 3: Diálogos com IA generativa | Darian e Lira respondem pelo LLM, com personalidade, conhecimento permitido, segredos e estado; o LLM também sugere as 4 próximas respostas de Kael (`prompt_builder.py`, `dialogue.py`) |
 | Mecânica 4: Fragmentos de memória | Personagens (confiança), locais e objetos (investigação) desbloqueiam lembranças escritas pelo LLM (`fragments.py`) |
@@ -26,10 +27,10 @@ Histórico técnico da primeira versão do MVP: ver `RELATORIO_MVP.md`.
 | Começo, meio e fim | Despertar (Darian) → exploração → Lira → decisão → desfecho |
 | Integração real de IA: texto | OpenAI Responses API pelo SDK oficial (`openai_client.py`); rótulo “Resposta narrativa — ChatGPT (LLM)” e “Lembrança — ChatGPT (LLM)” |
 | Integração real de IA: imagem | Todos os visuais são os assets aprovados da CP4, gerados com ChatGPT e identificados no rodapé de cada tela |
-| Extra: testes automatizados | 76 testes (`pytest -q`), sem rede |
+| Extra: testes automatizados | 81 testes (`pytest -q`), sem rede |
 | Extra: mecânicas adicionais | Save/Continuar, galeria de fragmentos, perfil (TAB), decisão de confiança com desfechos |
 | Extra: tratamento de erro da IA | Roteiro offline ramificado; “Tentar IA [R]” sem reaplicar efeitos; o jogo nunca trava |
-| Extra: polimento | Texto animado, efeitos das escolhas exibidos na tela, aviso de memória recuperada, configurações |
+| Extra: polimento | Fade entre telas e cenas, texto animado, efeitos das escolhas exibidos na tela, aviso de memória recuperada, configurações |
 
 ---
 
@@ -44,7 +45,7 @@ As divergências que restam são estas:
 | Respostas de Kael | Mockup: 4 escolhas fixas | Turno 1 igual ao mockup. Nos turnos seguintes, o LLM sugere as 4 respostas de Kael junto com a fala do NPC, cada uma marcada com uma intenção de lista fixa (curiosidade, empatia, lealdade, agressividade, egoísmo) que o Python converte em efeitos | Com opções fixas, a conversa não reagia ao que o NPC dizia. Gerar as opções mantém o diálogo coerente (CP4 §2.2). A IA não define números: a intenção é validada pelo JSON Schema, preservando a regra de que o estado pertence ao jogo. Impacto: validação extra (4 opções, até 36 caracteres, sem repetição) e textos curtos para caber nos botões do mockup |
 | Tabela de escolhas (§1.6) | Ajudar Darian (Empatia +2, Lealdade +1); Ameaçar Darian (Agressividade +2, Empatia −1); Perguntar sobre o passado (Curiosidade +2) | Mesmos efeitos. Foram acrescentados efeitos em confiança, vida e energia (ex.: Ameaçar também dá Vida −10 e Confiança −15) | Na CP4, a confiança e a resistência de Darian eram “efeitos narrativos esperados”; no MVP elas viraram números, para influenciar os fragmentos e o desfecho |
 | Fallback local | Previsto (§2.2.3 e §6.4) | Roteiro offline ramificado em JSON: 4 caminhos por intenção, para Darian (5 turnos) e Lira (3 turnos). Sem chave, o jogo roda inteiro por ele; com a API, cobre só os turnos que falharem | A primeira versão do MVP mostrava apenas “falha”. Um fallback genérico quebrava a história; o roteiro por caminho mantém a coerência sem IA. O texto é sempre identificado como “roteiro offline” e nunca rotulado como gerado por IA |
-| Exploração | “Percorrer ambientes, investigar ruínas” | Exploração lateral em uma única cena (o cenário oficial das ruínas), com 4 pontos de interesse | Havia apenas um cenário aprovado; novos ambientes exigiriam gerar e aprovar novas imagens (§6.2). Impacto: a mecânica existe e desbloqueia fragmentos, em escala de MVP |
+| Exploração | “Percorrer ambientes, investigar ruínas” | Exploração lateral em uma única cena (o cenário oficial das ruínas), com 5 pontos de interesse (estandarte, espadas, soldado caído, medalhão, Darian) e a Lira | Havia apenas um cenário aprovado; novos ambientes exigiriam gerar e aprovar novas imagens (§6.2). Impacto: a mecânica existe e desbloqueia fragmentos, em escala de MVP |
 | Fragmentos | Contador 2/12; visíveis: A Batalha, A Ordem de Arkan, Lira, Darian | Os mesmos 4 fragmentos podem ser recuperados; os outros 8 espaços aparecem bloqueados, com as artes de “bloqueado” do mockup | Os 8 fragmentos restantes não têm nome nem enredo definidos na CP4 |
 | Arte dos fragmentos e retratos | Ícones gerados por IA no mockup | Ícones, artes de “bloqueado” e cristal recortados do próprio mockup da Figura 6; retratos recortados dos sprites oficiais; Lira extraída em resolução original do PDF (Figura 2) | Não havia arquivos separados desses elementos. Recortar os assets aprovados evita gerar imagens novas e mantém a consistência visual (§6.2). Os textos são renderizados pelo jogo (§6.3) |
 | Desfecho | “Definir quem Kael deseja se tornar” e “decidir em quais personagens confiar” (§1.7), sem tela no mockup | Tela de desfecho com o perfil dominante e o resultado da decisão de confiança | Necessária para o “fim” exigido pela CP5; segue a identidade visual das outras telas |
@@ -56,11 +57,11 @@ Sem mudança: título, gênero, premissa, plataforma (PC), tecnologia (Python + 
 
 ## 3. Diário de Vibe Coding
 
-**Ferramentas:** Claude Code (terminal), usado nesta etapa da CP5. **[GRUPO]** Indiquem a ferramenta usada na primeira versão do MVP (a de `RELATORIO_MVP.md`).
+**Ferramentas:** Claude Code (terminal), usado nesta etapa da CP5 (branch `paiva`). Antigravity com Gemini 3.1 Pro, orientado pelo ChatGPT, usado na branch `feat/vertical-slice`, cujas ideias foram incorporadas no Prompt 9. **[GRUPO]** Indiquem a ferramenta usada na primeira versão do MVP (a de `RELATORIO_MVP.md`).
 
 ### Prompts-chave
 
-> O enunciado exige prompts **reais**. Os prompts 1 a 7 abaixo foram de fato usados nesta sessão.
+> O enunciado exige prompts **reais**. Os prompts 1 a 9 abaixo foram de fato usados nesta sessão.
 > **[GRUPO]** Acrescentem pelo menos 1 prompt real da primeira versão do MVP e completem a “Revisão do grupo”.
 
 **Prompt 1: obter o projeto**
@@ -105,6 +106,18 @@ Sem mudança: título, gênero, premissa, plataforma (PC), tecnologia (Python + 
 - *Correções feitas durante a própria sessão:* o primeiro recorte do retrato de Darian pegou o ombro; as opções do roteiro foram encurtadas (até 30 caracteres) para caber nos botões do mockup; o contador de fragmentos passava da moldura; os textos de efeito se acumulavam no topo da tela; Kael ficava sobre Darian na cena da Lira; uma expectativa de teste errada (empate Empatia × Lealdade resolve para “O Protetor”).
 - *Revisão do grupo:* **[GRUPO]** Revisar o roteiro da Lira e o texto da “Ordem de Arkan”, que foram escritos pela IA.
 
+**Prompt 8: comparar com a branch do Thiago**
+- *Pedido:* link da conversa do ChatGPT em que o Thiago conduziu a branch `feat/vertical-slice` com o Antigravity (Gemini): “depois consegue acessar esse site para terminarmos?”
+- *O que a IA gerou:* leu a conversa, rodou a branch numa cópia separada e comparou com a `paiva`. Encontrou um erro de import em `explore.py` (`panel` não importado) que fecha o jogo ao clicar em Novo Jogo — os 53 testes passavam porque nenhum desenha essa tela. Também viu que, sem chave da API, aquela versão fica presa no encontro com Darian, e que a exploração usava quadrados coloridos no lugar dos sprites.
+- *Decisão do grupo:* manter a `paiva` como base e trazer as boas ideias da outra branch. A `feat/vertical-slice` não foi alterada.
+- *Revisão do grupo:* **[GRUPO]**
+
+**Prompt 9: trazer as ideias da vertical slice**
+- *Pedido:* “quero” (aceitando: Lira reage ao que Kael fez com Darian; medalhão e soldado caído na exploração; fade entre cenas).
+- *O que a IA gerou:* `historia_da_partida` no estado e no prompt; cálculo do caminho predominante com Darian; abertura da Lira em 4 variações no roteiro; ajuste da confiança inicial da Lira; 2 novos pontos de exploração com efeitos aplicados uma vez; 5 botões na exploração; fade no app e nas fases do gameplay; 5 testes novos.
+- *Correções feitas durante a própria sessão:* um teste antigo entrou em loop infinito porque clicava no 4º botão esperando “Falar com Lira” (agora é o 5º) — o teste foi corrigido e ganhou limite de passos; os textos de efeito se sobrepunham; o nome “Soldado caído” ficava atrás do Kael (marcadores passaram a ser desenhados por cima dos personagens).
+- *Revisão do grupo:* **[GRUPO]** Revisar as 4 falas de abertura da Lira em `data/roteiro_offline.json`.
+
 ### Explicação do código principal
 
 > **[GRUPO] Obrigatório e escrito por vocês, sem IA** (exigência da CP5, Etapa 3). Sugestão de roteiro:
@@ -129,9 +142,10 @@ Sem mudança: título, gênero, premissa, plataforma (PC), tecnologia (Python + 
 | 4 | Opções geradas | Ler as 4 novas opções | Respostas curtas que reagem à fala de Darian | |
 | 5 | Bloqueio | Clicar várias vezes durante a espera | Nada muda; apenas uma requisição | |
 | 6 | Fragmento de personagem | Escolher respostas gentis ou leais | Confiança ≥ 40 → “Memória recuperada: Darian” | |
-| 7 | Exploração | “Explorar as ruínas” → andar com ←/→ → E no estandarte | Kael caminha; “Memória recuperada — A Ordem de Arkan”, com texto do LLM; Energia −5 | |
+| 7 | Exploração | “Explorar as ruínas” → andar com ←/→ → E no estandarte; depois Soldado caído e Medalhão (duas vezes cada) | Kael caminha; “Memória recuperada — A Ordem de Arkan”, com texto do LLM; Energia −5; soldado e medalhão alteram o perfil só na primeira vez | |
 | 8 | Fragmentos | Tecla F | Igual à Figura 6: cartões desbloqueados com arte, detalhe com citação e descrição | |
 | 9 | Lira | “Falar com Lira” e 3 turnos | Lira responde pelo LLM com retrato próprio; confiança ≥ 45 → fragmento Lira | |
+| 9b | Lira lembra de Darian | Jogar uma vez ajudando Darian e outra abandonando | Abertura da Lira e confiança inicial diferentes (TAB); falas do LLM coerentes com o que Kael fez | |
 | 10 | Decisão | “Decidir em quem confiar” → escolher | Desfecho com perfil de Kael e destino conforme a confiança | |
 | 11 | Continuar | Esc no meio da partida → CONTINUAR | A partida volta exatamente do ponto salvo | |
 | 12 | Configurações | Desligar “Diálogos com IA” | Menu mostra “roteiro offline”; nova partida sem chamadas de rede | |
@@ -139,7 +153,7 @@ Sem mudança: título, gênero, premissa, plataforma (PC), tecnologia (Python + 
 | 14 | Falha com API | Desligar a internet no meio da partida | “IA indisponível — roteiro offline”; a história continua; R tenta de novo | |
 | 15 | Janela | Redimensionar; fechar durante a espera | Proporção mantida; fecha sem travar | |
 
-**Testes automatizados:** `pytest -q` → 76 aprovados. Cobrem personagens e fragmentos da CP4, efeitos e limites, roteiro offline completo (Darian e Lira, 4 caminhos), opções geradas e validação do JSON, envio do JSON Schema à API, falha e nova tentativa, jornada completa (Darian → exploração → Lira → decisão), desfechos, save/continuar, configurações e percursos completos pela interface.
+**Testes automatizados:** `pytest -q` → 81 aprovados. Cobrem personagens e fragmentos da CP4, efeitos e limites, roteiro offline completo (Darian e Lira, 4 caminhos), opções geradas e validação do JSON, envio do JSON Schema à API, falha e nova tentativa, jornada completa (Darian → exploração → Lira → decisão), Lira reagindo a Darian, pontos de exploração, fade, desfechos, save/continuar, configurações e percursos completos pela interface.
 
 ---
 

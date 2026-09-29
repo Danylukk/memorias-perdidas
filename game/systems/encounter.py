@@ -21,14 +21,15 @@ class Encounter:
     """Conversa com um NPC em turnos. Estado e consumo da fila pertencem ao loop principal."""
 
     def __init__(self, service: DialogueService, offline: bool = False, state: GameState | None = None,
-                 npc_id: str = "darian", memories: dict | None = None):
+                 npc_id: str = "darian", memories: dict | None = None, opening_variant: str | None = None):
         self.service = service
         # Offline: sem chave/modelo configurados, o roteiro ramificado conduz a conversa sem chamar a API.
         self.offline = offline
         self.npc_id = npc_id
         self.state = state or new_game(npc_id)
         self.total_turns = total_turns(npc_id)
-        self.opening_line, self.opening_choices = opening(npc_id)
+        self.opening_variant = opening_variant
+        self.opening_line, self.opening_choices = opening(npc_id, opening_variant)
         self.turns: list[Turn] = []
         # Compartilhado com a jornada: fragmentos já recuperados não são desbloqueados de novo.
         self.memories: dict[str, Memory] = memories if memories is not None else {}
@@ -153,14 +154,16 @@ class Encounter:
             "player": asdict(self.state.player),
             "npc": asdict(self.state.npc),
             "situacao": self.state.situacao,
+            "historia": list(self.state.historia),
+            "opening_variant": self.opening_variant,
             "turns": [{"choice": choice_to_dict(t.choice), "result": result_to_dict(t.result)} for t in self.turns],
         }
 
     @classmethod
     def from_dict(cls, service, offline: bool, data: dict, memories: dict) -> "Encounter":
         npc = NPC(**{k: tuple(v) if isinstance(v, list) else v for k, v in data["npc"].items()})
-        state = GameState(Player(**data["player"]), npc, data["situacao"])
-        encounter = cls(service, offline, state, data["npc_id"], memories)
+        state = GameState(Player(**data["player"]), npc, data["situacao"], tuple(data.get("historia", ())))
+        encounter = cls(service, offline, state, data["npc_id"], memories, data.get("opening_variant"))
         encounter.turns = [Turn(choice_from_dict(t["choice"]), result_from_dict(t["result"])) for t in data["turns"]]
         return encounter
 

@@ -1,4 +1,5 @@
 import os
+from time import monotonic
 
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
@@ -10,7 +11,7 @@ from game.screens.fragments import FragmentsScreen
 from game.screens.gameplay import GameplayScreen
 from game.screens.menu import MenuScreen
 from game.screens.settings import SettingsScreen
-from game.screens.ui import SIZE, font
+from game.screens.ui import SIZE, fade_in, font
 from game.systems import save
 from game.systems.dialogue import DialogueService
 from game.systems.journey import load_gallery, load_progress
@@ -39,6 +40,7 @@ class GameApp:
         self.return_screen = None
         self.apply_display()
         self.screen = self.menu()
+        self.fade_t0 = monotonic()
         self.running = True
 
     @property
@@ -79,7 +81,13 @@ class GameApp:
             if not self.viewport().collidepoint(event.pos):
                 return
             event = pygame.event.Event(event.type, dict(event.dict, pos=self.to_canvas(event.pos)))
+        previous = self.screen
         action = self.screen.handle_event(event)
+        self._route(action)
+        if self.screen is not previous:
+            self.fade_t0 = monotonic()
+
+    def _route(self, action):
         if action == "new_game":
             save.delete(save.PROGRESS)
             self.screen = GameplayScreen(self.service, self.offline, animate_text=self.settings["texto_animado"])
@@ -112,6 +120,7 @@ class GameApp:
 
     def draw(self):
         self.screen.draw(self.canvas)
+        fade_in(self.canvas, self.fade_t0, monotonic())
         viewport = self.viewport()
         self.window.fill((0, 0, 0))
         self.window.blit(pygame.transform.smoothscale(self.canvas, viewport.size), viewport)

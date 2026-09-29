@@ -14,6 +14,8 @@ class GameState:
     player: Player
     npc: NPC
     situacao: str
+    # O que Kael já fez nesta jornada (ex.: como tratou Darian), para o NPC reagir ao estado acumulado.
+    historia: tuple[str, ...] = ()
 
 
 def _read(name: str) -> dict:
