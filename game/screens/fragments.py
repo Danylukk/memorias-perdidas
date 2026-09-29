@@ -1,6 +1,6 @@
 import pygame
 
-from game.screens.ui import GOLD, MUTED, RED, background, button, fragment_art, fragment_card, label, panel, paragraph
+from game.screens.ui import GOLD, MUTED, background, button, fragment_art, fragment_card, label, panel, paragraph
 from game.systems.fragments import FRAGMENTS, TOTAL_FRAGMENTS
 
 
@@ -58,6 +58,5 @@ class FragmentsScreen:
         label(surface, memory.fragment.titulo, (780, 170), 26, GOLD, True)
         surface.blit(fragment_art((360, 190)), (780, 212))
         paragraph(surface, f"“{memory.text}”", pygame.Rect(780, 420, 360, 200), 18)
-        source = ("Texto gerado por ChatGPT (LLM)" if memory.generated
-                  else "Reserva roteirizada — IA indisponível")
-        label(surface, source, (780, 640), 15, GOLD if memory.generated else RED)
+        source = "Texto gerado por ChatGPT (LLM)" if memory.generated else "Texto do roteiro (sem IA)"
+        label(surface, source, (780, 640), 15, GOLD if memory.generated else MUTED)

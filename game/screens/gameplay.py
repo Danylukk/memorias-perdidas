@@ -1,10 +1,12 @@
 """Telas Pygame."""
 import pygame
 
-from game.screens.ui import GOLD, MUTED, RED, background, bar, button, dialogue_panel, label, panel, paragraph, ruins_scene
+from game.screens.ui import (GOLD, MUTED, RED, background, bar, branch_scene, button, dialogue_panel, label, panel,
+                             paragraph, ruins_scene)
 from game.systems.choices import TOTAL_TURNS
 from game.systems.encounter import Encounter
 from game.systems.fragments import TOTAL_FRAGMENTS
+from game.systems.script import BRANCH_NAMES
 
 class GameplayScreen:
     MENU = pygame.Rect(880, 24, 280, 46)
@@ -13,8 +15,8 @@ class GameplayScreen:
     ENDING = pygame.Rect(40, 600, 800, 64)
     CHOICE_RECTS = tuple(pygame.Rect(40, 580 + i * 44, 800, 40) for i in range(4))
 
-    def __init__(self, dialogue_service):
-        self.encounter = Encounter(dialogue_service)
+    def __init__(self, dialogue_service, offline=False):
+        self.encounter = Encounter(dialogue_service, offline)
         self.scene = ruins_scene()
 
     def handle_event(self, event):
@@ -62,8 +64,8 @@ class GameplayScreen:
         if encounter.generation_in_progress:
             return "Darian está pensando..."
         if encounter.result is not None:
-            # Falha da IA: fala de reserva roteirizada, sempre identificada como tal.
-            return encounter.result.text if encounter.result.ok else encounter.choice.fallback
+            # Falha da IA: a fala vem do roteiro offline, identificada no título da caixa.
+            return encounter.result.text or encounter.choice.fallback
         return "Você... está vivo?"
 
     def draw(self, surface):
@@ -78,12 +80,15 @@ class GameplayScreen:
         label(surface, f"{player.energia}", (534, 62), 16)
         label(surface, f"Fragmentos: {player.fragmentos}/{TOTAL_FRAGMENTS}", (600, 62), 16, GOLD)
         button(surface, self.MENU, "Voltar ao menu  [Esc]", not encounter.generation_in_progress)
-        surface.blit(self.scene, (40, 115))
+        scene = branch_scene(encounter.branch)
+        surface.blit(scene or self.scene, (40, 115))
         shown_turn = min(encounter.round_index + (0 if encounter.generation_in_progress or encounter.finished else 1),
                          TOTAL_TURNS) or 1
-        label(surface, f"RUÍNAS / TURNO {shown_turn}/{TOTAL_TURNS}", (40, 94), 16)
-        label(surface, "KAEL", (268, 372), 16, GOLD)
-        label(surface, "DARIAN", (566, 372), 16, GOLD)
+        path = f"   ·   CAMINHO: {BRANCH_NAMES[encounter.branch].upper()}" if encounter.branch else ""
+        label(surface, f"RUÍNAS / TURNO {shown_turn}/{TOTAL_TURNS}{path}", (40, 94), 16)
+        if scene is None:
+            label(surface, "KAEL", (268, 372), 16, GOLD)
+            label(surface, "DARIAN", (566, 372), 16, GOLD)
         self._draw_side_panel(surface, player, npc)
         self._draw_dialogue(surface)
 
@@ -126,9 +131,13 @@ class GameplayScreen:
         dialogue_panel(surface, pygame.Rect(40, 403, 800, 170))
         failed = self.failed and not encounter.generation_in_progress
         if failed:
-            heading = "DARIAN / fala de reserva (roteirizada) — IA indisponível"
-        elif encounter.result is not None or encounter.generation_in_progress:
+            heading = "DARIAN / IA indisponível — roteiro offline"
+        elif encounter.result is not None and encounter.result.source == "roteiro":
+            heading = "DARIAN / roteiro offline"
+        elif encounter.result is not None or (encounter.generation_in_progress and not encounter.offline):
             heading = "DARIAN / Resposta narrativa — ChatGPT (LLM)"
+        elif encounter.generation_in_progress:
+            heading = "DARIAN"
         else:
             heading = "DARIAN / abertura roteirizada"
         label(surface, heading, (62, 436), 17, RED if failed else GOLD)
@@ -141,11 +150,11 @@ class GameplayScreen:
         if encounter.generation_in_progress:
             return "Gerando resposta · aguarde. Você pode fechar a janela a qualquer momento."
         if self.failed:
-            return "IA indisponível: fala de reserva exibida. Continue ou tente a IA de novo (efeitos mantidos)."
+            return "IA indisponível: a história segue pelo roteiro offline. R tenta a IA de novo (efeitos mantidos)."
         if encounter.finished:
             return "A conversa terminou. Veja o desfecho de Kael."
         if encounter.options_generated:
             return "Fala de Darian e opções de Kael geradas por ChatGPT (LLM). Teclas 1–4 ou mouse."
         if encounter.round_index == 0:
-            return "Opções iniciais do roteiro. Escolha com o mouse ou teclas 1–4."
-        return "Opções de reserva (roteirizadas). Escolha com o mouse ou teclas 1–4."
+            return "Escolha com o mouse ou teclas 1–4. Suas escolhas definem o caminho da história."
+        return "Roteiro offline: a história segue o caminho das suas escolhas. Teclas 1–4 ou mouse."

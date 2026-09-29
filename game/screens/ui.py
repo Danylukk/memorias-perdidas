@@ -125,6 +125,16 @@ def button(surface, rect, text, enabled=True, selected=False, size=20):
           TEXT if enabled or selected else MUTED)
 
 
+def branch_scene(branch):
+    """Cena ilustrada do caminho atual (assets/scenes/<caminho>.png), se a arte já existir."""
+    if branch is None or not (ASSETS / "scenes" / f"{branch}.png").exists():
+        return None
+    scene = pygame.Surface((800, 280), pygame.SRCALPHA)
+    scene.fill((*BG, 230))
+    fit_image(scene, asset(f"scenes/{branch}.png"), scene.get_rect())
+    return scene
+
+
 def ruins_scene():
     """Composição com imagens inteiras; as faixas laterais preservam a proporção do cenário."""
     scene = pygame.Surface((800, 280), pygame.SRCALPHA)

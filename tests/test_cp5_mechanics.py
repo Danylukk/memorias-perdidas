@@ -9,14 +9,15 @@ import pytest
 
 from game.config import Settings
 from game.models.state import new_game
-from game.systems.choices import (CHOICES, INTENTS, ROUND_2, TOTAL_TURNS, apply_choice, apply_effects,
-                                  choice_from_intent, fallback_options, get_choice)
+from game.systems.choices import (CHOICES, CP4_ACTIONS, INTENTS, TOTAL_TURNS, apply_choice, apply_effects,
+                                  choice_from_intent, get_choice)
 from game.systems.dialogue import DialogueResult, DialogueService, ERROR_MESSAGE, parse_turn
 from game.systems.encounter import Encounter
 from game.systems.ending import compute_ending
 from game.systems.fragments import FRAGMENTS, get_fragment, newly_unlocked
 from game.systems.openai_client import OpenAIClient
 from game.systems.prompt_builder import PromptBuilder, TURN_SCHEMA
+from game.systems.script import BRANCH_OF_INTENT, load_script, scripted_turn
 
 
 def turn_json(fala="Você acordou mesmo... Achei que tinha morrido.",
@@ -64,14 +65,24 @@ def test_intent_effects_are_fixed_in_python():
     assert state.npc.confianca_em_kael == 10
 
 
-def test_fixed_and_fallback_options():
-    assert fallback_options(1) == CHOICES
-    assert fallback_options(2) == ROUND_2
-    for turn in range(3, TOTAL_TURNS + 1):
-        options = fallback_options(turn)
-        assert len(options) == 4
-        assert len({c.intent for c in options}) == 4
-        assert all(c.fallback for c in options)
+def intent_for(branch):
+    return next(intent for intent, b in BRANCH_OF_INTENT.items() if b == branch)
+
+
+def test_offline_script_is_complete():
+    script = load_script()
+    assert set(script) == {str(t) for t in range(1, TOTAL_TURNS + 1)}
+    for turn in range(2, TOTAL_TURNS + 1):
+        assert set(script[str(turn)]) == set(BRANCH_OF_INTENT.values())
+    for turn, nodes in script.items():
+        for branch, node in nodes.items():
+            if turn == str(TOTAL_TURNS):
+                assert node["fala"] and "opcoes" not in node
+                continue
+            options = scripted_turn(int(turn), choice_from_intent(0, "x", intent_for(branch))).options
+            assert len(options) == 4, (turn, branch)
+            assert len({c.intent for c in options}) == 4, (turn, branch)
+            assert all(0 < len(c.label) <= 80 for c in options)
 
 
 def test_cp4_table_effects():
@@ -89,9 +100,10 @@ def test_stats_are_clamped():
     for _ in range(3):
         state = apply_choice(state, 4)
     assert state.npc.confianca_em_kael == 0
-    for _ in range(8):
-        state = apply_choice(state, 7)
+    for _ in range(25):
+        state = apply_effects(state, choice_from_intent(0, "Deixe-me ajudar.", "empatia"))
     assert state.player.energia == 0
+    assert state.npc.confianca_em_kael == 100
 
 
 def test_conversation_uses_generated_options_and_ends_after_five_turns():
@@ -114,20 +126,49 @@ def test_conversation_uses_generated_options_and_ends_after_five_turns():
     assert history[1]["acao"] == 'Kael respondeu: "Opção 1-empatia"'
 
 
-def test_failed_turn_falls_back_to_fixed_options_and_continues():
+def test_failed_turn_continues_by_script_and_allows_retry():
     service = ai_service()
     service.converse.side_effect = lambda *args: DialogueResult(error=ERROR_MESSAGE)
     encounter = Encounter(service)
-    assert encounter.choose(1)
+    assert encounter.choose(3)
     await_result(encounter)
-    assert not encounter.result.ok
-    assert encounter.current_choices == ROUND_2
-    pick(encounter, "curiosidade")
-    assert encounter.current_choices == fallback_options(3)
-    for _ in range(TOTAL_TURNS - 2):
+    assert not encounter.result.ok and encounter.result.error == ERROR_MESSAGE
+    assert encounter.result.source == "roteiro"
+    assert encounter.current_choices == scripted_turn(1, get_choice(3)).options
+    for _ in range(TOTAL_TURNS - 1):
         encounter.choose(encounter.current_choices[0].id)
         await_result(encounter)
     assert encounter.finished
+
+
+def test_offline_follows_the_chosen_path_without_calling_the_api():
+    service = MagicMock()
+    helped, left = Encounter(service, offline=True), Encounter(service, offline=True)
+    helped.choose(3)
+    left.choose(4)
+    await_result(helped)
+    await_result(left)
+    assert helped.branch == "cuidado" and left.branch == "abandono"
+    assert helped.result.ok and helped.result.source == "roteiro"
+    assert helped.result.text == get_choice(3).fallback
+    assert [c.label for c in helped.current_choices] != [c.label for c in left.current_choices]
+    assert not helped.retry()
+    # Mudar de atitude muda o caminho: uma opção agressiva leva ao confronto.
+    pick(helped, "agressividade")
+    assert helped.branch == "confronto"
+    assert helped.result.text == load_script()["2"]["confronto"]["fala"]
+    while not helped.finished:
+        helped.choose(helped.current_choices[0].id)
+        await_result(helped)
+    assert helped.memories and all(not m.generated for m in helped.memories.values())
+    service.respond.assert_not_called()
+    service.converse.assert_not_called()
+    service.remember.assert_not_called()
+
+
+def test_cp4_actions_are_offered_by_the_script():
+    options = scripted_turn(1, get_choice(1)).options
+    assert CP4_ACTIONS[0] in options and CP4_ACTIONS[1] in options
 
 
 def test_retry_after_failure_brings_generated_options():
@@ -179,17 +220,18 @@ def test_newly_unlocked_ignores_already_owned():
     assert len(FRAGMENTS) == 4
 
 
-@pytest.mark.parametrize("choice_ids,intent,title,fate", [
-    ((3, 7), "lealdade", "O Protetor", "levado para longe"),
-    ((1, 6), "agressividade", "O Implacável", "não confia mais"),
-    ((2, 5), "curiosidade", "O Buscador", "hesita"),
-    ((4,), "egoismo", "O Sobrevivente", "ficou para trás"),
+@pytest.mark.parametrize("steps,title,fate", [
+    ((3, "empatia", "empatia"), "O Protetor", "levado para longe"),
+    ((1, 6), "O Implacável", "não confia mais"),
+    ((2, 5), "O Buscador", "hesita"),
+    ((4,), "O Sobrevivente", "ficou para trás"),
 ])
-def test_endings(choice_ids, intent, title, fate):
+def test_endings(steps, title, fate):
     state = new_game()
-    for choice_id in choice_ids:
-        state = apply_choice(state, choice_id)
-    ending = compute_ending(state, intent)
+    for step in steps:
+        choice = get_choice(step) if isinstance(step, int) else choice_from_intent(0, "x", step)
+        state = apply_effects(state, choice)
+    ending = compute_ending(state, choice.intent)
     assert ending.titulo == title
     assert fate in ending.destino_darian
 

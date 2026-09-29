@@ -26,8 +26,10 @@ class NarrativeClient(Protocol):
 class DialogueResult:
     text: str = ""
     error: str = ""
-    # Próximas opções de Kael geradas pela IA; vazio quando não houver.
+    # Próximas opções de Kael; vazio quando não houver.
     options: tuple[Choice, ...] = ()
+    # "ia" quando gerado pelo LLM; "roteiro" quando vem do roteiro offline.
+    source: str = "ia"
 
     @property
     def ok(self) -> bool:

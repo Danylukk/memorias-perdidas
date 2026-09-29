@@ -1,0 +1,151 @@
+{
+  "_sobre": "Roteiro ramificado usado sem a API (ou quando ela falha). turnos[N][caminho] = fala de Darian em resposta à escolha do turno N + opções de Kael para o turno N+1. O caminho vem da intenção da escolha: empatia/lealdade = cuidado, curiosidade = perguntas, agressividade = confronto, egoismo = abandono. Sem 'fala', usa-se a fala própria da escolha fixa. 'ref' reutiliza as ações da tabela da CP4.",
+  "turnos": {
+    "1": {
+      "cuidado": {
+        "opcoes": [
+          {"texto": "Porque você precisa. Isso basta.", "intencao": "empatia"},
+          {"texto": "Você sabe meu nome. De onde me conhece?", "intencao": "curiosidade"},
+          {"texto": "Ninguém fica para trás. Nem você.", "intencao": "lealdade"},
+          {"texto": "Ajudo, mas quero respostas em troca.", "intencao": "agressividade"}
+        ]
+      },
+      "perguntas": {
+        "opcoes": [
+          {"ref": 5},
+          {"texto": "Deixe-me ver esse ferimento primeiro.", "intencao": "empatia"},
+          {"ref": 6},
+          {"texto": "Não tenho tempo para enigmas.", "intencao": "egoismo"}
+        ]
+      },
+      "abandono": {
+        "opcoes": [
+          {"texto": "Você não é problema meu.", "intencao": "egoismo"},
+          {"texto": "Espere... como sabe o meu nome?", "intencao": "curiosidade"},
+          {"texto": "Tudo bem. Vou voltar e ajudar.", "intencao": "empatia"},
+          {"ref": 6}
+        ]
+      }
+    },
+    "2": {
+      "cuidado": {
+        "fala": "O sangue está parando... Você amarra curativos do mesmo jeito de antes. Pelo menos isso você não esqueceu.",
+        "opcoes": [
+          {"texto": "Antes? Então lutamos juntos?", "intencao": "curiosidade"},
+          {"texto": "Descanse. Eu fico de guarda.", "intencao": "lealdade"},
+          {"texto": "Beba um pouco de água, devagar.", "intencao": "empatia"},
+          {"texto": "Já fiz minha parte. Agora é com você.", "intencao": "egoismo"}
+        ]
+      },
+      "perguntas": {
+        "fala": "Você quer respostas que nem eu tenho inteiras. Só sei que, quando o céu pegou fogo, você estava lá.",
+        "opcoes": [
+          {"texto": "O que aconteceu quando o céu pegou fogo?", "intencao": "curiosidade"},
+          {"texto": "Se eu estava lá, também devo algo a você.", "intencao": "lealdade"},
+          {"texto": "Você está escondendo alguma coisa. Fale!", "intencao": "agressividade"},
+          {"texto": "Primeiro vamos cuidar de você.", "intencao": "empatia"}
+        ]
+      },
+      "confronto": {
+        "fala": "Ainda consigo segurar uma lâmina, Kael. Ameaças não vão te devolver a memória.",
+        "opcoes": [
+          {"texto": "Fale agora, Darian. Não vou pedir de novo.", "intencao": "agressividade"},
+          {"texto": "Abaixe a lâmina. Eu só quero entender.", "intencao": "curiosidade"},
+          {"texto": "Você tem razão. Me desculpe.", "intencao": "empatia"},
+          {"texto": "Faça como quiser. Eu vou embora.", "intencao": "egoismo"}
+        ]
+      },
+      "abandono": {
+        "fala": "Então é isso? Sempre pensando primeiro em si mesmo. Essa parte de você as ruínas não levaram.",
+        "opcoes": [
+          {"texto": "E que outras partes de mim você conhece?", "intencao": "curiosidade"},
+          {"texto": "Talvez eu possa ser diferente. Deixe-me ajudar.", "intencao": "empatia"},
+          {"texto": "Cale a boca antes que eu me arrependa de ter parado.", "intencao": "agressividade"},
+          {"texto": "Sobreviver é tudo o que importa agora.", "intencao": "egoismo"}
+        ]
+      }
+    },
+    "3": {
+      "cuidado": {
+        "fala": "Esse medalhão no seu pescoço... você o apertava assim antes de cada marcha. Guarde-o bem, Kael.",
+        "opcoes": [
+          {"texto": "O que este medalhão significa?", "intencao": "curiosidade"},
+          {"texto": "Vou tirar você daqui. Juntos.", "intencao": "lealdade"},
+          {"texto": "Seu ferimento ainda sangra. Deixe-me ver.", "intencao": "empatia"},
+          {"texto": "Se ele vale algo, talvez eu consiga trocá-lo.", "intencao": "egoismo"}
+        ]
+      },
+      "perguntas": {
+        "fala": "Há coisas que você precisa lembrar sozinho. Se eu contar, vai ser só a minha versão... e ela não te absolve.",
+        "opcoes": [
+          {"texto": "Absolver? O que foi que eu fiz?", "intencao": "curiosidade"},
+          {"texto": "Seja o que for, não vou fugir disso.", "intencao": "lealdade"},
+          {"texto": "Chega de meias palavras!", "intencao": "agressividade"},
+          {"texto": "Se o passado é tão ruim, prefiro esquecê-lo.", "intencao": "egoismo"}
+        ]
+      },
+      "confronto": {
+        "fala": "Olhe para você... punho fechado, olhar frio. Isso sim eu reconheço, Kael.",
+        "opcoes": [
+          {"texto": "Então é isso que eu era? Um carrasco?", "intencao": "curiosidade"},
+          {"texto": "Não quero ser esse homem de novo.", "intencao": "empatia"},
+          {"texto": "Se me conhece, sabe que é melhor falar.", "intencao": "agressividade"},
+          {"texto": "Não preciso de você para descobrir.", "intencao": "egoismo"}
+        ]
+      },
+      "abandono": {
+        "fala": "O fogo está chegando mais perto. Se vai partir, parta. Mas não finja que não sabe o que está deixando para trás.",
+        "opcoes": [
+          {"texto": "E o que exatamente eu estou deixando?", "intencao": "curiosidade"},
+          {"texto": "Não vou deixar você queimar aqui.", "intencao": "lealdade"},
+          {"texto": "Não me diga o que fingir.", "intencao": "agressividade"},
+          {"texto": "Cada um por si, Darian.", "intencao": "egoismo"}
+        ]
+      }
+    },
+    "4": {
+      "cuidado": {
+        "fala": "O fogo está chegando pelas muralhas. Se me carregar, vamos devagar... mas vamos juntos.",
+        "opcoes": [
+          {"texto": "Apoie-se em mim. Vamos agora.", "intencao": "lealdade"},
+          {"texto": "Antes de irmos: quem eu era para você?", "intencao": "curiosidade"},
+          {"texto": "Vou buscar ajuda e volto por você.", "intencao": "empatia"},
+          {"texto": "Com você no ombro, não saio vivo daqui.", "intencao": "egoismo"}
+        ]
+      },
+      "perguntas": {
+        "fala": "Não há tempo para toda a verdade. Mas saiba: nem todos que te procuram querem o seu bem.",
+        "opcoes": [
+          {"texto": "Quem está me procurando?", "intencao": "curiosidade"},
+          {"texto": "Então é melhor ficarmos juntos.", "intencao": "lealdade"},
+          {"texto": "Você fala demais e diz de menos.", "intencao": "agressividade"},
+          {"texto": "Se estão atrás de mim, não posso esperar você.", "intencao": "egoismo"}
+        ]
+      },
+      "confronto": {
+        "fala": "Vá em frente, termine o que começou. Ou largue essa raiva e me ajude a sair daqui antes do fogo.",
+        "opcoes": [
+          {"texto": "Levante-se. Vou tirar você daqui.", "intencao": "empatia"},
+          {"texto": "Só depois que você me contar tudo.", "intencao": "agressividade"},
+          {"texto": "Diga só uma coisa: por que eu perdi a memória?", "intencao": "curiosidade"},
+          {"texto": "Fique com o fogo, então.", "intencao": "egoismo"}
+        ]
+      },
+      "abandono": {
+        "fala": "Vá, então. Mas se algum dia lembrar do meu nome, lembre também que eu esperei por você.",
+        "opcoes": [
+          {"texto": "Não. Eu fico. Vamos sair juntos.", "intencao": "lealdade"},
+          {"texto": "Por que você esperaria por mim?", "intencao": "curiosidade"},
+          {"texto": "Adeus, Darian.", "intencao": "egoismo"},
+          {"texto": "Pare de tentar me prender com culpa!", "intencao": "agressividade"}
+        ]
+      }
+    },
+    "5": {
+      "cuidado": {"fala": "Então vamos, Kael. Se sairmos daqui vivos, eu te conto tudo o que sei... prometo."},
+      "perguntas": {"fala": "Sobreviva primeiro. As respostas vão te encontrar, quer você queira ou não."},
+      "confronto": {"fala": "Guarde essa lâmina, Kael. O homem que eu conheci também achava que força era resposta."},
+      "abandono": {"fala": "Vá. As ruínas guardam o que você deixa para trás... e um dia vão cobrar."}
+    }
+  }
+}

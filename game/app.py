@@ -23,8 +23,18 @@ class GameApp:
         pygame.display.set_caption("Memórias Perdidas — MVP")
         self.canvas = pygame.Surface(SIZE)
         self.clock = pygame.time.Clock()
-        self.service = dialogue_service or DialogueService(OpenAIClient(Settings.from_env()))
-        self.screen = MenuScreen()
+        self.offline = False
+        if dialogue_service is None:
+            settings = Settings.from_env()
+            # Sem chave/modelo, o jogo roda inteiro pelo roteiro offline, sem tentar a rede.
+            self.offline = not (settings.api_key and settings.model)
+            dialogue_service = DialogueService(OpenAIClient(settings))
+            self.mode = ("Modo: roteiro offline (sem chave da API)" if self.offline
+                         else f"Modo: IA — {settings.model}")
+        else:
+            self.mode = ""
+        self.service = dialogue_service
+        self.screen = MenuScreen(self.mode)
         # Memórias da última partida desta execução; não há save em disco no MVP.
         self.memories = {}
         self.return_screen = None
@@ -50,14 +60,14 @@ class GameApp:
             )))
         action = self.screen.handle_event(event)
         if action == "new_game":
-            self.screen = GameplayScreen(self.service)
+            self.screen = GameplayScreen(self.service, self.offline)
         elif action == "menu":
-            self.screen = MenuScreen()
+            self.screen = MenuScreen(self.mode)
         elif action == "fragments":
             self.return_screen = self.screen
             self.screen = FragmentsScreen(self.current_memories())
         elif action == "back":
-            self.screen, self.return_screen = self.return_screen or MenuScreen(), None
+            self.screen, self.return_screen = self.return_screen or MenuScreen(self.mode), None
         elif action == "ending":
             self.memories = dict(self.screen.encounter.memories)
             self.screen = EndingScreen(self.screen.encounter)

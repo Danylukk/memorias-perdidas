@@ -37,7 +37,7 @@ local foi fornecida pelo responsável pelo projeto. Reinicie o jogo após config
 
 Variáveis já definidas no ambiente têm precedência sobre o `.env`.
 Não publique o `.env`: ele e suas variantes estão no `.gitignore`; `.env.example` é permitido.
-Não há modelo local. Sem a API, o jogo usa falas de reserva roteirizadas, sempre identificadas como tais.
+Sem chave e modelo configurados, o jogo roda inteiro no **roteiro offline** (ver abaixo), sem acessar a rede.
 
 ## Executar
 
@@ -97,15 +97,25 @@ durante a geração. A janela pode ser redimensionada; o conteúdo mantém sua p
 **Desfecho:** o atributo mais alto define o título (Protetor, Companheiro, Buscador, Implacável ou
 Sobrevivente; empate segue essa ordem). A intenção da última escolha e a confiança definem o destino de Darian.
 
-### Falhas da IA e fallback
+### Roteiro offline e falhas da IA
 
-Se a geração falhar (sem internet, sem chave, timeout, resposta inválida), o jogo **não trava**:
-exibe uma **fala de reserva roteirizada**, sempre identificada em vermelho como
-“fala de reserva (roteirizada) — IA indisponível”, e oferece **opções de reserva** fixas
-(no turno 2, incluem “Perguntar sobre o passado” e “Ameaçar Darian” da tabela da CP4).
-**Tentar IA de novo / R** faz uma nova solicitação explícita para a mesma ação e o mesmo estado,
-sem reaplicar efeitos. Fragmentos cuja geração falhar usam um texto de reserva, também identificado.
-Não há tentativas automáticas. Nenhuma reserva é apresentada como gerada pela IA.
+O arquivo `data/roteiro_offline.json` tem uma conversa **ramificada**, escrita com o Claude Code e editável pelo grupo. Cada escolha
+leva a um **caminho** conforme a intenção: empatia/lealdade → **Cuidado**, curiosidade → **Perguntas**,
+agressividade → **Confronto**, egoísmo → **Abandono**. Em cada turno, a fala de Darian e as 4 opções
+dependem do caminho da última escolha (ex.: “Ajudar o soldado” leva a curativos e confiança;
+“Ir embora” leva a “Vai me deixar aqui para morrer, Kael?”). O roteiro também oferece
+“Perguntar sobre o passado” e “Ameaçar Darian” com os efeitos da tabela da CP4.
+
+- **Sem chave/modelo no `.env`:** o menu mostra “Modo: roteiro offline” e a partida inteira segue o roteiro,
+  identificado como “roteiro offline” na caixa de diálogo. Nenhuma chamada de rede é feita.
+- **Com a API configurada:** a IA gera falas e opções. Se uma geração falhar (sem internet, timeout,
+  resposta inválida), aquele turno segue pelo roteiro, com o aviso “IA indisponível — roteiro offline”, e
+  **Tentar IA de novo / R** faz uma nova solicitação sem reaplicar efeitos. Não há tentativas automáticas.
+- Fragmentos sem IA usam o texto do roteiro, identificado como “Texto do roteiro (sem IA)”.
+
+A cena acima da caixa de diálogo também pode mudar por caminho: basta colocar `cuidado.png`,
+`perguntas.png`, `confronto.png` ou `abandono.png` em `assets/scenes/` (prompts sugeridos em
+`assets/scenes/LEIA-ME.md`). Sem esses arquivos, usa-se a composição padrão.
 
 ## Arquitetura
 
@@ -123,6 +133,7 @@ GameplayScreen → Encounter → choices.apply_choice (estado atualizado)
 
 - `game/models/`: estado imutável de Kael e Darian. JSONs de `data/` são dados iniciais, não saves.
 - `game/systems/choices.py`: opções fixas do turno 1, tabela intenção → efeitos e opções/falas de reserva.
+- `game/systems/script.py` + `data/roteiro_offline.json`: roteiro ramificado por caminho (modo offline e falhas).
 - `game/systems/fragments.py`: fragmentos de memória, condições de desbloqueio e textos de reserva.
 - `game/systems/ending.py`: cálculo do desfecho a partir do estado.
 - `game/systems/prompt_builder.py`: regras fixas e contexto JSON com os atributos já atualizados.

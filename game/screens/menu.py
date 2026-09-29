@@ -8,6 +8,9 @@ class MenuScreen:
     FRAGMENTS = pygame.Rect(760, 390, 340, 64)
     EXIT = pygame.Rect(760, 470, 340, 64)
 
+    def __init__(self, mode=""):
+        self.mode = mode
+
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_RETURN:
@@ -42,3 +45,5 @@ class MenuScreen:
         button(surface, self.EXIT, "Sair")
         label(surface, "Enter para começar · F para Fragmentos", (760, 556), 17, MUTED)
         label(surface, "MVP acadêmico · Kael × Darian", (760, 718), 17, MUTED)
+        if self.mode:
+            label(surface, self.mode, (760, 590), 17, GOLD)

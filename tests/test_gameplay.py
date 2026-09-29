@@ -92,11 +92,11 @@ def test_missing_key_shows_error_and_retry_does_not_reapply(app):
     app.handle_event(click(MenuScreen.NEW_GAME))
     app.handle_event(click(GameplayScreen.CHOICE_RECTS[2]))
     wait_for_ui(app)
-    # Falha nunca vira fala da IA: a tela mostra a reserva roteirizada, identificada como tal.
+    # Falha nunca vira fala da IA: a história segue pelo roteiro offline, identificada como tal.
     assert app.screen.failed
     assert app.screen.dialogue_text == app.screen.encounter.choice.fallback
     assert "Não foi possível" in app.screen.encounter.result.error
-    assert app.screen.encounter.result.text == ""
+    assert app.screen.encounter.result.source == "roteiro"
     app.draw()
     app.handle_event(click(GameplayScreen.RETRY))
     wait_for_ui(app)
@@ -166,3 +166,26 @@ def test_full_playthrough_fragments_and_ending(app):
     assert isinstance(app.screen, MenuScreen)
     # 5 turnos + 2 fragmentos; nenhuma chamada extra.
     assert client.generate.call_count == 7
+
+
+def test_offline_mode_without_key_plays_to_the_end(monkeypatch, tmp_path):
+    from game.screens.ending import EndingScreen
+
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_MODEL", raising=False)
+    monkeypatch.setattr("game.config.PROJECT_ROOT", tmp_path)
+    app = GameApp()
+    try:
+        assert app.offline
+        assert "offline" in app.screen.mode
+        app.draw()
+        app.handle_event(click(MenuScreen.NEW_GAME))
+        for _ in range(5):
+            app.handle_event(click(GameplayScreen.CHOICE_RECTS[0]))
+            wait_for_ui(app)
+            assert not app.screen.failed
+            app.draw()
+        app.handle_event(click(GameplayScreen.ENDING))
+        assert isinstance(app.screen, EndingScreen)
+    finally:
+        app.close()

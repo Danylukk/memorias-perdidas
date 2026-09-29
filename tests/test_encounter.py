@@ -72,7 +72,8 @@ def test_unexpected_worker_failure_unlocks():
     encounter.choose(4)
     await_result(encounter)
     assert encounter.result.error == ERROR_MESSAGE
-    assert encounter.result.text == ""
+    assert encounter.result.source == "roteiro"  # a história segue pelo roteiro offline
+    assert len(encounter.current_choices) == 4
     assert encounter.state.player.egoismo == 2
 
 
