@@ -2,7 +2,11 @@
   "darian": {
     "nome": "Darian",
     "papel": "soldado",
-    "personalidade": ["disciplinado", "desconfiado", "leal"],
+    "personalidade": [
+      "disciplinado",
+      "desconfiado",
+      "leal"
+    ],
     "estado": "gravemente ferido",
     "confianca_em_kael": 20,
     "conhece_kael": true,
@@ -10,16 +14,51 @@
     "informacoes_conhecidas": [
       "Seu nome é Darian e você é um soldado.",
       "Você está gravemente ferido nas ruínas após uma batalha.",
-      "Você reconhece Kael, mas ainda desconfia dele."
+      "Você reconhece Kael, mas ainda desconfia dele.",
+      "Uma curandeira chamada Lira costuma cuidar dos feridos nestas ruínas."
     ],
     "informacoes_permitidas": [
       "Seu nome é Darian e você é um soldado.",
       "Você está gravemente ferido nas ruínas após uma batalha.",
-      "Você reconhece Kael, mas ainda desconfia dele."
+      "Você reconhece Kael, mas ainda desconfia dele.",
+      "Uma curandeira chamada Lira costuma cuidar dos feridos nestas ruínas."
     ],
     "segredos": [
-      "origem de Kael", "alianças e inimigos anteriores de Kael",
+      "origem de Kael",
+      "alianças e inimigos anteriores de Kael",
       "participação de Kael na guerra"
+    ]
+  },
+  "lira": {
+    "nome": "Lira",
+    "papel": "curandeira",
+    "personalidade": [
+      "calma",
+      "observadora",
+      "reservada",
+      "compassiva"
+    ],
+    "estado": "exausta após cuidar dos feridos",
+    "confianca_em_kael": 30,
+    "conhece_kael": true,
+    "pode_revelar_passado": false,
+    "informacoes_conhecidas": [
+      "Seu nome é Lira e você é uma curandeira.",
+      "Você percorre as ruínas cuidando dos feridos da batalha.",
+      "Você conhece Kael, mas evita revelar tudo o que sabe sobre ele.",
+      "Você sabe que Darian está ferido nas ruínas."
+    ],
+    "informacoes_permitidas": [
+      "Seu nome é Lira e você é uma curandeira.",
+      "Você percorre as ruínas cuidando dos feridos da batalha.",
+      "Você conhece Kael, mas evita revelar tudo o que sabe sobre ele.",
+      "Você sabe que Darian está ferido nas ruínas."
+    ],
+    "segredos": [
+      "origem de Kael",
+      "o que Lira sabe sobre o passado de Kael",
+      "quem causou a batalha",
+      "a Ordem de Arkan"
     ]
   }
 }

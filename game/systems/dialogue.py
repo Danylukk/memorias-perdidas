@@ -11,10 +11,10 @@ from game.systems.fragments import Fragment
 from game.systems.prompt_builder import DialoguePrompt, PromptBuilder
 
 logger = logging.getLogger(__name__)
-ERROR_MESSAGE = "Não foi possível gerar a resposta de Darian. Verifique a conexão e a configuração da IA."
+ERROR_MESSAGE = "Não foi possível gerar a resposta. Verifique a conexão e a configuração da IA."
 MAX_RESPONSE_LENGTH = 360
 MAX_MEMORY_LENGTH = 420
-MAX_OPTION_LENGTH = 80
+MAX_OPTION_LENGTH = 36
 OPTION_COUNT = 4
 
 
@@ -85,12 +85,12 @@ class DialogueService:
         return self._generate(lambda: self.prompt_builder.build(state, choice, history), validate_response)
 
     def converse(self, state: GameState, choice: Choice, history: tuple[dict, ...] = (),
-                 first_option_id: int = 1000) -> DialogueResult:
+                 first_option_id: int = 1000, total_turns: int = 5) -> DialogueResult:
         """Fala de Darian e as próximas opções de Kael, geradas na mesma chamada."""
         started = monotonic()
         logger.info("Início da geração do turno.")
         try:
-            prompt = self.prompt_builder.build_turn(state, choice, history)
+            prompt = self.prompt_builder.build_turn(state, choice, history, total_turns)
             result = parse_turn(self.client.generate(prompt), first_option_id)
         except Exception:
             logger.warning("Falha na geração do turno (%.2fs).", monotonic() - started)

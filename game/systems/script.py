@@ -17,20 +17,36 @@ BRANCH_NAMES = {"cuidado": "Cuidado", "perguntas": "Perguntas", "confronto": "Co
 
 @lru_cache(maxsize=1)
 def load_script() -> dict:
-    return json.loads(SCRIPT_PATH.read_text(encoding="utf-8"))["turnos"]
+    data = json.loads(SCRIPT_PATH.read_text(encoding="utf-8"))
+    return {key: value for key, value in data.items() if not key.startswith("_")}
+
+
+def total_turns(npc_id: str) -> int:
+    return len(load_script()[npc_id]["turnos"])
 
 
 def branch_of(choice: Choice) -> str:
     return BRANCH_OF_INTENT[choice.intent]
 
 
-def scripted_turn(turn: int, choice: Choice) -> DialogueResult:
-    """Resposta de Darian à escolha do turno `turn` (1-based) e as opções do turno seguinte."""
-    nodes = load_script()[str(turn)]
-    node = nodes.get(branch_of(choice)) or nodes["perguntas"]
-    options = tuple(
+def _options(npc_id: str, turn: int, raw_options) -> tuple[Choice, ...]:
+    base = 300 + turn * 10 + (0 if npc_id == "darian" else 500)
+    return tuple(
         get_choice(option["ref"]) if "ref" in option
-        else choice_from_intent(300 + turn * 10 + index, option["texto"], option["intencao"])
-        for index, option in enumerate(node.get("opcoes", ()))
+        else choice_from_intent(base + index, option["texto"], option["intencao"])
+        for index, option in enumerate(raw_options)
     )
-    return DialogueResult(text=node.get("fala") or choice.fallback, options=options, source="roteiro")
+
+
+def opening(npc_id: str) -> tuple[str, tuple[Choice, ...]]:
+    """Fala inicial do personagem e as opções do 1º turno."""
+    node = load_script()[npc_id]["abertura"]
+    return node["fala"], _options(npc_id, 0, node["opcoes"])
+
+
+def scripted_turn(turn: int, choice: Choice, npc_id: str = "darian") -> DialogueResult:
+    """Resposta à escolha do turno `turn` (1-based) e as opções do turno seguinte."""
+    nodes = load_script()[npc_id]["turnos"][str(turn)]
+    node = nodes.get(branch_of(choice)) or nodes["perguntas"]
+    return DialogueResult(text=node.get("fala") or choice.fallback,
+                          options=_options(npc_id, turn, node.get("opcoes", ())), source="roteiro")

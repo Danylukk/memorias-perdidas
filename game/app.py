@@ -9,8 +9,11 @@ from game.screens.ending import EndingScreen
 from game.screens.fragments import FragmentsScreen
 from game.screens.gameplay import GameplayScreen
 from game.screens.menu import MenuScreen
+from game.screens.settings import SettingsScreen
 from game.screens.ui import SIZE, font
+from game.systems import save
 from game.systems.dialogue import DialogueService
+from game.systems.journey import load_gallery, load_progress
 from game.systems.openai_client import OpenAIClient
 
 
@@ -19,26 +22,43 @@ class GameApp:
         font.cache_clear()
         pygame.display.init()
         pygame.font.init()
+        self.settings = save.load_settings()
         self.window = pygame.display.set_mode(SIZE, pygame.RESIZABLE)
         pygame.display.set_caption("Memórias Perdidas — MVP")
         self.canvas = pygame.Surface(SIZE)
         self.clock = pygame.time.Clock()
-        self.offline = False
         if dialogue_service is None:
-            settings = Settings.from_env()
-            # Sem chave/modelo, o jogo roda inteiro pelo roteiro offline, sem tentar a rede.
-            self.offline = not (settings.api_key and settings.model)
-            dialogue_service = DialogueService(OpenAIClient(settings))
-            self.mode = ("Modo: roteiro offline (sem chave da API)" if self.offline
-                         else f"Modo: IA — {settings.model}")
+            config = Settings.from_env()
+            self.ai_available = bool(config.api_key and config.model)
+            self.model = config.model
+            dialogue_service = DialogueService(OpenAIClient(config))
         else:
-            self.mode = ""
+            # Serviço injetado (testes): tratado como IA disponível.
+            self.ai_available, self.model = True, "injetado"
         self.service = dialogue_service
-        self.screen = MenuScreen(self.mode)
-        # Memórias da última partida desta execução; não há save em disco no MVP.
-        self.memories = {}
         self.return_screen = None
+        self.apply_display()
+        self.screen = self.menu()
         self.running = True
+
+    @property
+    def offline(self):
+        # Sem chave/modelo, ou com a IA desligada nas Configurações, o jogo roda pelo roteiro offline.
+        return not (self.ai_available and self.settings["usar_ia"])
+
+    @property
+    def mode(self):
+        return "Diálogos: roteiro offline" if self.offline else f"Diálogos: ChatGPT (LLM) — {self.model}"
+
+    def menu(self):
+        return MenuScreen(self.mode, save.has_progress())
+
+    def apply_display(self):
+        flags = pygame.FULLSCREEN if self.settings["tela_cheia"] else pygame.RESIZABLE
+        try:
+            self.window = pygame.display.set_mode(SIZE, flags)
+        except pygame.error:
+            self.window = pygame.display.set_mode(SIZE, pygame.RESIZABLE)
 
     def viewport(self):
         width, height = self.window.get_size()
@@ -46,38 +66,49 @@ class GameApp:
         size = (max(1, round(SIZE[0] * scale)), max(1, round(SIZE[1] * scale)))
         return pygame.Rect((width - size[0]) // 2, (height - size[1]) // 2, *size)
 
+    def to_canvas(self, pos):
+        viewport = self.viewport()
+        return (int((pos[0] - viewport.x) * SIZE[0] / viewport.width),
+                int((pos[1] - viewport.y) * SIZE[1] / viewport.height))
+
     def handle_event(self, event):
         if event.type == pygame.QUIT:
             self.running = False
             return
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            viewport = self.viewport()
-            if not viewport.collidepoint(event.pos):
+        if event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEMOTION):
+            if not self.viewport().collidepoint(event.pos):
                 return
-            event = pygame.event.Event(event.type, dict(event.dict, pos=(
-                int((event.pos[0] - viewport.x) * SIZE[0] / viewport.width),
-                int((event.pos[1] - viewport.y) * SIZE[1] / viewport.height),
-            )))
+            event = pygame.event.Event(event.type, dict(event.dict, pos=self.to_canvas(event.pos)))
         action = self.screen.handle_event(event)
         if action == "new_game":
-            self.screen = GameplayScreen(self.service, self.offline)
+            save.delete(save.PROGRESS)
+            self.screen = GameplayScreen(self.service, self.offline, animate_text=self.settings["texto_animado"])
+        elif action == "continue":
+            journey = load_progress(self.service, self.offline)
+            self.screen = (GameplayScreen(self.service, self.offline, journey, self.settings["texto_animado"])
+                           if journey else self.menu())
         elif action == "menu":
-            self.screen = MenuScreen(self.mode)
+            self.screen = self.menu()
         elif action == "fragments":
             self.return_screen = self.screen
-            self.screen = FragmentsScreen(self.current_memories())
+            memories = (self.screen.journey.memories if isinstance(self.screen, GameplayScreen)
+                        else load_gallery())
+            self.screen = FragmentsScreen(memories)
+        elif action == "settings":
+            self.screen = SettingsScreen(self.settings, self.ai_available, self.model)
+        elif action == "settings_changed":
+            self.settings = dict(self.screen.settings)
+            save.save_settings(self.settings)
+            self.apply_display()
         elif action == "back":
-            self.screen, self.return_screen = self.return_screen or MenuScreen(self.mode), None
+            if isinstance(self.screen, SettingsScreen) or self.return_screen is None:
+                self.screen, self.return_screen = self.menu(), None
+            else:
+                self.screen, self.return_screen = self.return_screen, None
         elif action == "ending":
-            self.memories = dict(self.screen.encounter.memories)
-            self.screen = EndingScreen(self.screen.encounter)
+            self.screen = EndingScreen(self.screen.journey)
         elif action == "quit":
             self.running = False
-
-    def current_memories(self):
-        if isinstance(self.screen, GameplayScreen):
-            self.memories = dict(self.screen.encounter.memories)
-        return self.memories
 
     def draw(self):
         self.screen.draw(self.canvas)

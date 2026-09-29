@@ -1,9 +1,8 @@
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 
 from game.models.state import GameState
 
 STAT_LIMITS = (0, 100)
-TOTAL_TURNS = 5
 
 
 @dataclass(frozen=True)
@@ -13,7 +12,7 @@ class Choice:
     action: str
     player_effects: tuple[tuple[str, int], ...]
     trust_effect: int = 0
-    # Fala própria de Darian no roteiro offline (opções fixas do turno 1).
+    # Resposta roteirizada de Darian a esta escolha do mockup (usada pelo roteiro offline).
     fallback: str = "..."
     intent: str = "curiosidade"
 
@@ -26,6 +25,15 @@ INTENTS = {
     "agressividade": ((("agressividade", 1), ("vida", -5)), -10),
     "egoismo": ((("egoismo", 1),), -5),
 }
+
+
+def choice_to_dict(choice: Choice) -> dict:
+    return asdict(choice)
+
+
+def choice_from_dict(data: dict) -> Choice:
+    effects = tuple((name, delta) for name, delta in data["player_effects"])
+    return Choice(**{**data, "player_effects": effects})
 
 
 def choice_from_intent(choice_id: int, text: str, intent: str) -> Choice:

@@ -14,36 +14,43 @@ Histórico técnico da primeira versão do MVP: ver `RELATORIO_MVP.md`.
 
 | Requisito | Onde está no MVP |
 | --- | --- |
-| Menu principal funcional | `game/screens/menu.py`: Novo Jogo, Fragmentos, Sair |
-| Gameplay com HUD do mockup | `game/screens/gameplay.py`: barras de Vida/Energia, Fragmentos x/12, cena, NPC, caixa de diálogo, 4 escolhas |
-| Mecânica 1: Escolhas narrativas | Conversa de 5 turnos × 4 opções; cada opção tem uma intenção que o Python converte em efeitos nos atributos e na confiança de Darian (`choices.py`) |
-| Mecânica 2: Diálogos com IA generativa | A cada turno, o LLM gera a fala de Darian **e as 4 próximas opções de Kael** (JSON Schema estrito), com estado e histórico (`dialogue.py`, `prompt_builder.py`) |
-| Mecânica 3: Fragmentos de memória | Desbloqueio por regras em Python e texto da lembrança gerado pelo LLM; tela Fragmentos (`fragments.py`) |
-| Mecânica extra: Sistema comportamental (CP4 §1.6) | Empatia, Agressividade, Curiosidade, Egoísmo e Lealdade definem o desfecho (`ending.py`) |
-| Começo, meio e fim | Abertura → 5 turnos de conversa → tela de desfecho (“Kael, O Protetor” etc.) |
-| Integração real de IA generativa (texto) | OpenAI Responses API via SDK oficial (`openai_client.py`); rótulo “Resposta narrativa — ChatGPT (LLM)” |
-| IA generativa de imagem (assets pré-gerados) | Kael, Darian, cenário, logo, botões e caixa de diálogo gerados com ChatGPT na CP4 e usados no jogo |
-| Extra: testes automatizados | 67 testes (`pytest -q`), sem rede |
-| Extra: tratamento de erro da IA | Roteiro offline ramificado (`data/roteiro_offline.json`): sem chave, a partida inteira segue o caminho das escolhas; com a API, um turno que falha continua pelo roteiro, identificado, com “Tentar IA de novo [R]” |
+| Mesmo jogo da CP4 | Mesmo título, gênero (RPG narrativo dark fantasy), premissa, personagens (Kael, Darian e Lira) e objetivo (recuperar fragmentos, decidir em quem confiar e quem Kael vai se tornar) |
+| Menu principal (Figura 4) | `game/screens/menu.py`: logo, Kael, NOVO JOGO, CONTINUAR, FRAGMENTOS (com cristal), CONFIGURAÇÕES e SAIR, com rodapé “Assets gerados por IA” |
+| Gameplay (Figura 5) | `game/screens/gameplay.py`: cena, retrato de Kael com barras de Vida e Energia, cristal com “Fragmentos: x/12”, NPC, caixa de diálogo com retrato e nome, 4 escolhas em linha e rodapé de assets |
+| Fragmentos de Memória (Figura 6) | `game/screens/fragments.py`: grade 4×3 com A Batalha, A Ordem de Arkan, Lira e Darian, espaços bloqueados, painel do fragmento selecionado (imagem, citação e descrição) e botão VOLTAR |
+| Mecânica 1: Exploração | Kael caminha pelas ruínas e investiga o estandarte e as espadas (`journey.py`) |
+| Mecânica 2: Escolhas narrativas | Cada escolha altera atributos, vida, energia e confiança; a decisão final define em quem Kael confia (`choices.py`, `ending.py`) |
+| Mecânica 3: Diálogos com IA generativa | Darian e Lira respondem pelo LLM, com personalidade, conhecimento permitido, segredos e estado; o LLM também sugere as 4 próximas respostas de Kael (`prompt_builder.py`, `dialogue.py`) |
+| Mecânica 4: Fragmentos de memória | Personagens (confiança), locais e objetos (investigação) desbloqueiam lembranças escritas pelo LLM (`fragments.py`) |
+| Sistema comportamental (CP4 §1.6) | Empatia, Agressividade, Curiosidade, Egoísmo e Lealdade entram no contexto do LLM e definem o desfecho |
+| Começo, meio e fim | Despertar (Darian) → exploração → Lira → decisão → desfecho |
+| Integração real de IA: texto | OpenAI Responses API pelo SDK oficial (`openai_client.py`); rótulo “Resposta narrativa — ChatGPT (LLM)” e “Lembrança — ChatGPT (LLM)” |
+| Integração real de IA: imagem | Todos os visuais são os assets aprovados da CP4, gerados com ChatGPT e identificados no rodapé de cada tela |
+| Extra: testes automatizados | 76 testes (`pytest -q`), sem rede |
+| Extra: mecânicas adicionais | Save/Continuar, galeria de fragmentos, perfil (TAB), decisão de confiança com desfechos |
+| Extra: tratamento de erro da IA | Roteiro offline ramificado; “Tentar IA [R]” sem reaplicar efeitos; o jogo nunca trava |
+| Extra: polimento | Texto animado, efeitos das escolhas exibidos na tela, aviso de memória recuperada, configurações |
 
 ---
 
 ## 2. Diário de Mudanças em relação à CP4
 
+As telas, os três personagens, as quatro mecânicas, os fragmentos do mockup e o menu completo seguem a CP4.
+As divergências que restam são estas:
+
 | Item alterado | O que estava na CP4 | O que foi implementado | Justificativa técnica |
 | --- | --- | --- | --- |
-| Personagem Lira | POC com três personagens: Kael, Darian e Lira | Somente o encontro Kael × Darian. O fragmento “Lira” não existe; os espaços excedentes aparecem bloqueados | O PNG aprovado da Lira não está no repositório nem no pacote de assets do projeto. Uma segunda cena exigiria nova ficha de NPC, política de segredos e prompts. Priorizamos um encontro completo, com começo, meio e fim e IA real. Impacto: a Lira fica para uma versão futura, e o sistema de NPC (`characters.json` + `PromptBuilder`) já comporta novos personagens |
-| Opções do menu | Novo Jogo, Continuar, Fragmentos, Configurações e Sair | Novo Jogo, Fragmentos e Sair | “Continuar” depende de save/load, que não existe no MVP. Não há opções configuráveis em jogo, porque chave e modelo ficam no `.env`. Botões sem função seriam enganosos. Impacto: nenhuma mecânica depende deles |
-| Mecânica de Exploração | Percorrer ambientes e investigar ruínas | Não implementada como movimentação livre. A cena é fixa; a investigação acontece pela conversa com Darian | O escopo do MVP foi concentrado nas mecânicas que usam IA. Movimentação exigiria mapa, colisão e novos assets. Impacto: continuam implementadas 3 mecânicas da CP4 (escolhas, diálogos com IA e fragmentos), mais o sistema comportamental |
-| Escolhas do encontro | Tabela §1.6: Ajudar, Ameaçar e Perguntar sobre o passado. Mockup: 4 escolhas fixas | Turno 1 igual ao mockup. Nos turnos 2 a 5, as 4 opções de Kael são **geradas pelo LLM** junto com a fala de Darian, e cada uma é marcada com uma intenção (curiosidade, empatia, lealdade, agressividade, egoísmo) que o Python converte em efeitos. “Ameaçar Darian” e “Perguntar sobre o passado”, com os efeitos da CP4, ficam nas opções de reserva do turno 2 | Com opções fixas, a conversa não reagia ao que Darian dizia (ex.: “Você... está vivo?” → “Sim, mas quem sou eu?”). Gerar as opções mantém o diálogo coerente e amplia o uso de IA como motor de interação (CP4 §2.2). A IA não define números: a intenção vem de uma lista fixa validada pelo JSON Schema, preservando a regra da CP4 de que o estado pertence ao jogo. Impacto: mais uma chamada estruturada por turno e validação adicional (4 opções, até 80 caracteres, sem repetição) |
-| Ferramenta de IA de texto em tempo de execução | ChatGPT (interface), com “API/SDK de LLM (previsto)” a definir | OpenAI Responses API pelo SDK oficial `openai`, com Structured Outputs (JSON Schema estrito) nos turnos. Modelo configurável no `.env`; a primeira versão foi validada com `gpt-5.6-luna` | A interface web não pode ser chamada pelo jogo. A API é o mesmo provedor do ChatGPT. Timeout de 25 s, sem retries automáticos e limite de 512 tokens (1200 nos turnos em JSON), para controlar latência e custo (CP4 §6.4 e §6.5) |
-| Fallback local | Previsto na CP4 (§2.2.3 e §6.4) | A primeira versão do MVP mostrava apenas “falha”. Agora há um **roteiro offline ramificado** em JSON: 4 caminhos (Cuidado, Perguntas, Confronto, Abandono) × 5 turnos, escolhidos pela intenção de cada opção. Sem chave, o jogo roda inteiro por ele; com a API, cobre só os turnos que falharem | Retoma o que a CP4 previa. Um fallback genérico quebrava a história (as opções não seguiam a escolha anterior); o roteiro por caminho mantém a coerência sem IA. O texto do roteiro é sempre identificado como “roteiro offline” e nunca rotulado como gerado por IA. Impacto: o jogo é jogável do início ao fim sem internet e sem custo |
-| Cena por caminho | Uma cena fixa no mockup de gameplay | Suporte a uma cena por caminho em `assets/scenes/`, com prompts no estilo da CP4. Enquanto a arte não for gerada e aprovada, usa-se a composição original | As imagens precisam ser geradas no ChatGPT com as referências oficiais e aprovadas pelo grupo (CP4 §6.2). Impacto: nenhum no fluxo; a troca é automática quando os arquivos existirem |
-| Arte dos fragmentos | Um ícone gerado por IA para cada fragmento (mockup) | Os fragmentos desbloqueados usam um recorte do cenário oficial das ruínas | Não havia arte aprovada por fragmento. Gerar imagens novas sem revisão de consistência contrariaria a estratégia da CP4 (§6.2). Impacto apenas visual |
-| Quantidade de fragmentos | Contador x/12 | 4 fragmentos obtíveis (A Batalha, O Medalhão, Darian, Mãos Manchadas) e 8 bloqueados. O desbloqueio depende de atributos e confiança, não de uma opção específica, porque as opções são geradas | Cada fragmento precisa de condição, tema de prompt e texto de reserva. Quatro fragmentos cobrem os perfis de escolha do encontro. Os nomes “A Ordem de Arkan” e “Lira” dependem de enredo e personagem ainda não implementados |
-| Persistência | Não especificada | As memórias duram até o jogo ser fechado; não há save em disco | Save/load não está entre as mecânicas da CP4 e não era necessário para o fluxo de uma sessão |
+| Ferramenta de IA de texto em tempo de execução | ChatGPT (interface), com “API/SDK de LLM (previsto)” a definir no MVP (§3 e §4) | OpenAI Responses API pelo SDK oficial `openai`, com Structured Outputs (JSON Schema estrito) nos turnos. Modelo configurável no `.env`; a primeira versão foi validada com `gpt-5.6-luna` | A interface web não pode ser chamada pelo jogo; a própria CP4 previa definir a API no MVP. A API é do mesmo provedor do ChatGPT. Timeout de 25 s, sem retries automáticos e limite de tokens para controlar latência e custo (§6.4 e §6.5) |
+| Respostas de Kael | Mockup: 4 escolhas fixas | Turno 1 igual ao mockup. Nos turnos seguintes, o LLM sugere as 4 respostas de Kael junto com a fala do NPC, cada uma marcada com uma intenção de lista fixa (curiosidade, empatia, lealdade, agressividade, egoísmo) que o Python converte em efeitos | Com opções fixas, a conversa não reagia ao que o NPC dizia. Gerar as opções mantém o diálogo coerente (CP4 §2.2). A IA não define números: a intenção é validada pelo JSON Schema, preservando a regra de que o estado pertence ao jogo. Impacto: validação extra (4 opções, até 36 caracteres, sem repetição) e textos curtos para caber nos botões do mockup |
+| Tabela de escolhas (§1.6) | Ajudar Darian (Empatia +2, Lealdade +1); Ameaçar Darian (Agressividade +2, Empatia −1); Perguntar sobre o passado (Curiosidade +2) | Mesmos efeitos. Foram acrescentados efeitos em confiança, vida e energia (ex.: Ameaçar também dá Vida −10 e Confiança −15) | Na CP4, a confiança e a resistência de Darian eram “efeitos narrativos esperados”; no MVP elas viraram números, para influenciar os fragmentos e o desfecho |
+| Fallback local | Previsto (§2.2.3 e §6.4) | Roteiro offline ramificado em JSON: 4 caminhos por intenção, para Darian (5 turnos) e Lira (3 turnos). Sem chave, o jogo roda inteiro por ele; com a API, cobre só os turnos que falharem | A primeira versão do MVP mostrava apenas “falha”. Um fallback genérico quebrava a história; o roteiro por caminho mantém a coerência sem IA. O texto é sempre identificado como “roteiro offline” e nunca rotulado como gerado por IA |
+| Exploração | “Percorrer ambientes, investigar ruínas” | Exploração lateral em uma única cena (o cenário oficial das ruínas), com 4 pontos de interesse | Havia apenas um cenário aprovado; novos ambientes exigiriam gerar e aprovar novas imagens (§6.2). Impacto: a mecânica existe e desbloqueia fragmentos, em escala de MVP |
+| Fragmentos | Contador 2/12; visíveis: A Batalha, A Ordem de Arkan, Lira, Darian | Os mesmos 4 fragmentos podem ser recuperados; os outros 8 espaços aparecem bloqueados, com as artes de “bloqueado” do mockup | Os 8 fragmentos restantes não têm nome nem enredo definidos na CP4 |
+| Arte dos fragmentos e retratos | Ícones gerados por IA no mockup | Ícones, artes de “bloqueado” e cristal recortados do próprio mockup da Figura 6; retratos recortados dos sprites oficiais; Lira extraída em resolução original do PDF (Figura 2) | Não havia arquivos separados desses elementos. Recortar os assets aprovados evita gerar imagens novas e mantém a consistência visual (§6.2). Os textos são renderizados pelo jogo (§6.3) |
+| Desfecho | “Definir quem Kael deseja se tornar” e “decidir em quais personagens confiar” (§1.7), sem tela no mockup | Tela de desfecho com o perfil dominante e o resultado da decisão de confiança | Necessária para o “fim” exigido pela CP5; segue a identidade visual das outras telas |
+| Conteúdo narrativo novo | Premissa, personagens e fragmentos, sem roteiro detalhado | Falas do roteiro offline, fatos permitidos de Lira (“conhece Kael e evita revelar tudo”), descrições dos fragmentos e textos dos desfechos, escritos com o Claude Code | A CP4 não tinha roteiro escrito. O conteúdo respeita as regras da CP4: não revela o passado de Kael nem quem causou a batalha. **[GRUPO]** revisar e ajustar em `data/` |
 
-Sem mudança: título, gênero, premissa, plataforma (PC), tecnologia (Python + Pygame + JSON) e a geração de imagens offline com ChatGPT.
+Sem mudança: título, gênero, premissa, plataforma (PC), tecnologia (Python + Pygame + JSON), proporção 16:9 das telas, personagens e geração de imagens offline com ChatGPT.
 
 ---
 
@@ -53,93 +60,95 @@ Sem mudança: título, gênero, premissa, plataforma (PC), tecnologia (Python + 
 
 ### Prompts-chave
 
-> O enunciado exige prompts **reais**. Os prompts 1 a 6 abaixo foram de fato usados nesta sessão.
-> **[GRUPO]** Acrescentem pelo menos 1 prompt real da primeira versão do MVP e completem a coluna “Revisão do grupo”.
+> O enunciado exige prompts **reais**. Os prompts 1 a 7 abaixo foram de fato usados nesta sessão.
+> **[GRUPO]** Acrescentem pelo menos 1 prompt real da primeira versão do MVP e completem a “Revisão do grupo”.
 
 **Prompt 1: obter o projeto**
 - *Pedido:* “preciso que você pegue esse arquivo para realizarmos o jogo https://github.com/Danylukk/memorias-perdidas.git”
 - *O que a IA gerou:* clonou o repositório, criou o `.venv`, instalou as dependências, criou o `.env` vazio e rodou os 45 testes existentes (todos passaram).
-- *Ajustes:* o README recomenda Python 3.12. O ambiente usou 3.13.14 e os testes passaram. Chave e modelo continuam sob responsabilidade do grupo.
+- *Ajustes:* o README recomenda Python 3.12. O ambiente usou 3.13.14 e os testes passaram.
 - *Revisão do grupo:* **[GRUPO]**
 
 **Prompt 2: comparar o relatório da CP4 com o código**
 - *Pedido:* “pode ler pra mim” (PDF do relatório da CP4)
-- *O que a IA gerou:* resumo do relatório e uma tabela com o que a CP4 promete e ainda não existe no código (Lira, menu completo, tela de Fragmentos, escolha “Ameaçar”, fallback).
-- *Ajustes:* a IA apontou que a primeira versão contradizia a CP4 ao recusar qualquer fallback. Esse ponto virou a mudança “Fallback local” do Diário de Mudanças.
+- *O que a IA gerou:* resumo do relatório e uma tabela com o que a CP4 promete e ainda não existia no código (Lira, menu completo, tela de Fragmentos, escolha “Ameaçar”, fallback).
+- *Ajustes:* a IA apontou que a primeira versão contradizia a CP4 ao recusar qualquer fallback.
 - *Revisão do grupo:* **[GRUPO]**
 
 **Prompt 3: plano da CP5**
 - *Pedido:* “poderia me ajudar com isso” (PDF do enunciado da CP5)
-- *O que a IA gerou:* comparação com a rubrica e uma lista dos riscos de nota: fim de sessão fraco, apenas 2 das 4 mecânicas da CP4, ausência do Diário de Mudanças. Propôs rodadas, fragmentos, desfecho e fallback.
-- *Decisões do grupo:* escopo “plano proposto”, sem a Lira (não há imagem dela) e commits numa branch local `cp5`, sem push.
+- *O que a IA gerou:* comparação com a rubrica e uma lista dos riscos de nota (fim de sessão fraco, poucas mecânicas, ausência do Diário de Mudanças), com um plano de rodadas, fragmentos, desfecho e fallback.
+- *Decisões do grupo:* escopo “plano proposto” e commits numa branch local `cp5`, sem push. Naquele momento a Lira ficou de fora porque não achamos a imagem dela (corrigido no Prompt 7).
 - *Revisão do grupo:* **[GRUPO]**
 
-**Prompt 4: implementação (continuação do Prompt 3, com as decisões acima)**
-- *O que a IA gerou:* `choices.py` com 3 rodadas fixas (substituídas pela conversa gerada no Prompt 5); `fragments.py`; `ending.py`; `Encounter` com rodadas, histórico e fragmentos; prompt de fragmento; telas de Fragmentos e de Desfecho; botão Fragmentos no menu; 15 testes novos.
-- *Correções feitas durante a própria sessão:*
-  1. Dois testes antigos quebraram. O serviço passou a receber o histórico, e a falha passou a mostrar a fala de reserva em vez da mensagem de erro. Os testes foram atualizados para o novo comportamento.
-  2. Em `test_endings`, dois casos estavam com expectativa errada. Exemplo: a sequência 4→6→12 soma Egoísmo 4 contra Agressividade 2, então o desfecho correto é “Sobrevivente”. A lógica do jogo estava certa; os dados do teste foram corrigidos.
-  3. As telas foram renderizadas em PNG para inspeção. O título da caixa de diálogo sobrepunha a moldura e o rótulo “reserva” passava da borda do painel de fragmentos. Posição e texto foram ajustados.
-  4. Ao repetir a geração, o aviso “Memória recuperada” sumia. Isso foi corrigido: o aviso só é limpo numa nova escolha.
-- *Revisão do grupo:* **[GRUPO]** O que vocês conferiram, mudaram ou rejeitaram. Exemplos: textos das falas de reserva, efeitos das escolhas, nomes dos desfechos.
+**Prompt 4: implementação (continuação do Prompt 3)**
+- *O que a IA gerou:* rodadas fixas, fragmentos, desfecho, telas de Fragmentos e de Desfecho e 15 testes novos.
+- *Correções feitas durante a própria sessão:* dois testes antigos atualizados para o novo comportamento; duas expectativas erradas em `test_endings` (a lógica estava certa); ajustes de layout depois de renderizar as telas em PNG; o aviso “Memória recuperada” sumia ao repetir a geração.
+- *Revisão do grupo:* **[GRUPO]**
 
 **Prompt 5: opções geradas pela IA**
 - *Pedido:* “o que eu queria era que a ia gerasse as perguntas, tipo você ainda está vivo, sim, mas quem eu sou, daí ele falava e ia continuando sabe?”
-- *O que a IA gerou:* conversa de 5 turnos, com as opções fixas do mockup no turno 1 (decisão do grupo) e, depois, fala de Darian mais 4 opções de Kael geradas numa única chamada em JSON Schema estrito. Criou a tabela intenção → efeitos em Python, a função `parse_turn`, que valida o JSON, as opções de reserva para falhas e o layout das opções em linhas de largura inteira.
-- *Correções feitas durante a própria sessão:* os fragmentos antes dependiam de escolhas específicas (ex.: “Examinar o medalhão”), que deixaram de existir com as opções geradas, e passaram a depender dos atributos. O destino de Darian passou a usar a intenção da última escolha. As regras de estilo (“sem JSON”) foram separadas do formato do turno, para o prompt não se contradizer. Testes reescritos para o novo fluxo.
-- *Revisão do grupo:* **[GRUPO]** Conferir, com a API real, se as opções geradas fazem sentido e variam de intenção.
+- *O que a IA gerou:* conversa em turnos em que o LLM devolve, em JSON Schema estrito, a fala do NPC e 4 opções de Kael; a tabela intenção → efeitos em Python; e a função `parse_turn`, que valida o JSON.
+- *Correções feitas durante a própria sessão:* os fragmentos, que dependiam de escolhas fixas, passaram a depender do estado; as regras de estilo (“sem JSON”) foram separadas do formato do turno, para o prompt não se contradizer.
+- *Revisão do grupo:* **[GRUPO]** Conferir, com a API real, se as opções geradas fazem sentido.
 
 **Prompt 6: história ramificada sem a API**
 - *Pedido:* “quero seguir primeiro sem a api [...] se escolhi ajudar ele, a história seguiria nessa reta e as opções de diálogo mudam”
-- *O que a IA gerou:* o roteiro `data/roteiro_offline.json`, com 4 caminhos definidos pela intenção da escolha, 16 falas de Darian e 60 opções de Kael escritas pela IA; `game/systems/script.py`; modo offline automático quando o `.env` está vazio; nome do caminho no HUD; suporte a cenas por caminho e prompts de imagem em `assets/scenes/LEIA-ME.md`.
-- *Decisões do grupo:* “quadros” significa tanto os turnos quanto as imagens. Sem a API, o modo offline aparece como “roteiro offline” normal, sem aviso vermelho.
-- *Correções feitas durante a própria sessão:* as reservas genéricas por intenção foram removidas, porque não seguiam a história. O turno 1 reaproveita as falas específicas das opções do mockup.
-- *Revisão do grupo:* **[GRUPO]** Revisar o texto do roteiro, que foi escrito pela IA e pode ser editado direto no JSON.
+- *O que a IA gerou:* roteiro ramificado em JSON, com 4 caminhos definidos pela intenção da escolha, e modo offline automático quando o `.env` está vazio.
+- *Decisões do grupo:* sem a API, o modo offline aparece como “roteiro offline” normal, sem aviso vermelho.
+- *Correções feitas durante a própria sessão:* as reservas genéricas foram removidas, porque não seguiam a história.
+- *Revisão do grupo:* **[GRUPO]**
 
-**Prompt 7:** **[GRUPO]** Próximo prompt real, por exemplo o teste com a API real.
+**Prompt 7: fidelidade total à CP4**
+- *Pedido:* “quero que você seja fiel às imagens que estão no documento e como ele está escrito, refaça o que fizemos para podermos continuar” (com o PDF da CP4)
+- *O que a IA gerou:* extraiu as imagens do PDF em resolução original. Kael e Darian eram idênticos aos do repositório, e a **Lira** oficial estava no PDF. Recortou dos mockups as artes dos fragmentos, as de “bloqueado” e o cristal. Refez as três telas nas proporções e posições dos mockups (16:9, menu com 5 opções, HUD com retrato e barras, caixa de diálogo com retrato, escolhas em linha, rodapé “Assets gerados por IA”). Trocou os fragmentos inventados pelos 4 do mockup. Adicionou Lira, exploração, decisão de confiança, CONTINUAR (save em JSON) e CONFIGURAÇÕES.
+- *Correções feitas durante a própria sessão:* o primeiro recorte do retrato de Darian pegou o ombro; as opções do roteiro foram encurtadas (até 30 caracteres) para caber nos botões do mockup; o contador de fragmentos passava da moldura; os textos de efeito se acumulavam no topo da tela; Kael ficava sobre Darian na cena da Lira; uma expectativa de teste errada (empate Empatia × Lealdade resolve para “O Protetor”).
+- *Revisão do grupo:* **[GRUPO]** Revisar o roteiro da Lira e o texto da “Ordem de Arkan”, que foram escritos pela IA.
 
 ### Explicação do código principal
 
 > **[GRUPO] Obrigatório e escrito por vocês, sem IA** (exigência da CP5, Etapa 3). Sugestão de roteiro:
-> 1. O que acontece do clique em uma escolha até a fala aparecer (`GameplayScreen` → `Encounter.choose` → thread → `DialogueService` → `OpenAIClient` → fila → `update`).
-> 2. Por que o estado é alterado em Python antes da chamada à IA, e por que a resposta da IA nunca altera o estado.
-> 3. Como o `PromptBuilder` impede que segredos de Darian cheguem ao modelo.
-> 4. Como os fragmentos são desbloqueados e quem escreve o texto deles.
-> 5. O que acontece quando a API falha.
+> 1. Como a `Journey` organiza a partida (fases) e como o `Encounter` conduz uma conversa em turnos.
+> 2. O que acontece do clique numa escolha até a fala aparecer (thread → `DialogueService` → `OpenAIClient` → fila → `update`).
+> 3. Por que o estado é alterado em Python antes da chamada à IA, e por que a IA só escolhe uma “intenção” e não números.
+> 4. Como o `PromptBuilder` impede que os segredos de Darian e Lira cheguem ao modelo.
+> 5. Como os fragmentos são desbloqueados (confiança, investigação) e quem escreve o texto deles.
+> 6. O que acontece quando a API falha ou não está configurada (roteiro offline).
 
 ---
 
 ## 4. Checklist de testes manuais
 
-> **[GRUPO]** Executem com a chave configurada e preencham “Resultado obtido”.
+> **[GRUPO]** Executem com a chave configurada (e depois sem ela) e preencham “Resultado obtido”.
 
 | # | Mecânica / tela | Passos | Resultado esperado | Resultado obtido |
 | --- | --- | --- | --- | --- |
-| 1 | Menu | Abrir o jogo | Logo, Kael, botões Novo Jogo, Fragmentos e Sair | |
-| 2 | Início | Novo Jogo | Ruínas, Kael e Darian, “Você... está vivo?”, Turno 1/5, as 4 opções do mockup, Confiança 20 | |
-| 3 | Escolha + IA | Clicar “Ajudar o soldado” | “Darian está pensando...”, depois uma fala com o rótulo ChatGPT (LLM). Empatia 2, Lealdade 1, Confiança 30 | |
-| 4 | Opções geradas | Ler as 4 novas opções | Opções diferentes das fixas, reagindo à fala de Darian; rodapé “opções geradas por ChatGPT (LLM)” | |
-| 5 | Bloqueio | Clicar em várias opções durante a espera | Nada muda; apenas uma requisição | |
-| 6 | Conversa | Escolher opções gentis/leais por mais 2 turnos | Darian responde coerente com o histórico; Confiança ≥ 40 e “Memória recuperada: Darian” | |
-| 7 | Fragmentos | Tecla F | Fragmento com texto do LLM; os demais bloqueados | |
-| 8 | Desfecho | Completar os 5 turnos e apertar Enter | Tela “Kael, O …”, atributos, destino de Darian e fragmentos | |
-| 9 | Caminho agressivo | Novo Jogo → escolher sempre as opções agressivas | Vida cai, fragmento Mãos Manchadas, desfecho “O Implacável” | |
-| 10 | Modo offline | Esvaziar o `.env` e jogar duas vezes: “Ajudar o soldado” e depois “Ir embora” | Menu mostra “roteiro offline”; falas e opções diferentes em cada caminho; HUD mostra o caminho; o jogo chega ao desfecho | |
-| 10b | Falha com API | Com a chave configurada, desligar a internet no meio da partida | Aviso “IA indisponível — roteiro offline”; a história continua pelo caminho atual | |
-| 11 | Repetir IA | Com falha, reconectar e apertar R | Nova fala e novas opções do LLM; atributos inalterados | |
-| 12 | Janela | Redimensionar e fechar durante a espera | Proporção mantida; fecha sem travar | |
-| 13 | Voltar ao menu | Esc no gameplay e depois Fragmentos no menu | Menu; os fragmentos da última partida aparecem | |
+| 1 | Menu | Abrir o jogo | Igual à Figura 4: logo, Kael, 5 botões, rodapé de assets; CONTINUAR apagado sem save | |
+| 2 | Início | NOVO JOGO | Igual à Figura 5: Darian diz “Você... está vivo?”, com as 4 escolhas do mockup | |
+| 3 | Escolha + IA | “Ajudar o soldado” | “Darian está pensando...”, depois fala com o rótulo ChatGPT (LLM); acima de Kael aparece “Empatia +2, Lealdade +1, Confiança de Darian +10” | |
+| 4 | Opções geradas | Ler as 4 novas opções | Respostas curtas que reagem à fala de Darian | |
+| 5 | Bloqueio | Clicar várias vezes durante a espera | Nada muda; apenas uma requisição | |
+| 6 | Fragmento de personagem | Escolher respostas gentis ou leais | Confiança ≥ 40 → “Memória recuperada: Darian” | |
+| 7 | Exploração | “Explorar as ruínas” → andar com ←/→ → E no estandarte | Kael caminha; “Memória recuperada — A Ordem de Arkan”, com texto do LLM; Energia −5 | |
+| 8 | Fragmentos | Tecla F | Igual à Figura 6: cartões desbloqueados com arte, detalhe com citação e descrição | |
+| 9 | Lira | “Falar com Lira” e 3 turnos | Lira responde pelo LLM com retrato próprio; confiança ≥ 45 → fragmento Lira | |
+| 10 | Decisão | “Decidir em quem confiar” → escolher | Desfecho com perfil de Kael e destino conforme a confiança | |
+| 11 | Continuar | Esc no meio da partida → CONTINUAR | A partida volta exatamente do ponto salvo | |
+| 12 | Configurações | Desligar “Diálogos com IA” | Menu mostra “roteiro offline”; nova partida sem chamadas de rede | |
+| 13 | Modo offline | Esvaziar o `.env` e jogar dois caminhos (Ajudar × Ir embora) | Falas e opções diferentes em cada caminho; o jogo chega ao desfecho | |
+| 14 | Falha com API | Desligar a internet no meio da partida | “IA indisponível — roteiro offline”; a história continua; R tenta de novo | |
+| 15 | Janela | Redimensionar; fechar durante a espera | Proporção mantida; fecha sem travar | |
 
-**Testes automatizados:** `pytest -q` → 67 aprovados. Cobrem efeitos das escolhas e intenções, limites 0–100, os 5 turnos com opções geradas, validação do JSON do turno, envio do JSON Schema à API, opções e falas de reserva, desbloqueio de fragmentos, desfechos, prompts, erros da API e um percurso completo pela interface.
+**Testes automatizados:** `pytest -q` → 76 aprovados. Cobrem personagens e fragmentos da CP4, efeitos e limites, roteiro offline completo (Darian e Lira, 4 caminhos), opções geradas e validação do JSON, envio do JSON Schema à API, falha e nova tentativa, jornada completa (Darian → exploração → Lira → decisão), desfechos, save/continuar, configurações e percursos completos pela interface.
 
 ---
 
 ## 5. Roteiro sugerido para o vídeo (2 a 5 min)
 
-1. (20 s) Menu e apresentação do jogo e da proposta da CP4.
-2. (90 s) Partida completa: Ajudar o soldado e depois 4 turnos com opções geradas. Mostrar que as opções mudam conforme o que Darian diz, a espera, o rótulo ChatGPT (LLM) e a mudança dos atributos no painel.
-3. (30 s) Tecla F: fragmentos desbloqueados, com texto gerado pela IA.
-4. (20 s) Tela de desfecho.
-5. (40 s) Segunda partida rápida pelo caminho agressivo, para mostrar outro desfecho e a IA reagindo de outro jeito.
-6. (20 s) Sem internet: o turno segue pelo roteiro offline, identificado, e o jogo continua.
+1. (20 s) Menu: mostrar que é igual ao mockup da CP4 e o rodapé “Assets gerados por IA”.
+2. (70 s) Darian: “Ajudar o soldado” e mais alguns turnos. Mostrar a espera, a fala com o rótulo ChatGPT (LLM), as opções geradas mudando conforme a fala e os efeitos aparecendo acima de Kael.
+3. (40 s) Exploração: caminhar até o estandarte e as espadas e mostrar a lembrança escrita pelo LLM.
+4. (20 s) Tecla F: a tela de Fragmentos igual ao mockup.
+5. (50 s) Lira: conversa e decisão de confiança; tela de desfecho.
+6. (20 s) CONTINUAR e CONFIGURAÇÕES (desligar a IA → roteiro offline).
 7. (10 s) `pytest -q` rodando no terminal.

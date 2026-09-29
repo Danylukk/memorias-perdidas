@@ -4,5 +4,8 @@
     "empatia": 0, "agressividade": 0, "curiosidade": 0,
     "egoismo": 0, "lealdade": 0, "fragmentos": 0
   },
-  "situacao": "Kael acordou sem memória nas ruínas após uma grande batalha e encontrou Darian, um soldado gravemente ferido. Somente Kael e Darian estão nesta cena."
+  "situacao": "Kael acordou sem memória nas ruínas após uma grande batalha e encontrou Darian, um soldado gravemente ferido. Somente Kael e Darian estão nesta cena.",
+  "situacoes": {
+    "lira": "Depois de falar com Darian e investigar as ruínas, Kael encontra Lira, uma curandeira que percorre o campo de batalha cuidando dos feridos. Darian descansa ferido ali perto. Somente Kael e Lira conversam nesta cena."
+  }
 }

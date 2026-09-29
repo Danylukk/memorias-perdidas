@@ -1,7 +1,7 @@
-"""Desfecho da sessão, calculado somente a partir do estado Python."""
+"""Desfecho (CP4 §1.7): decidir em quem confiar e definir quem Kael deseja se tornar."""
 from dataclasses import dataclass
 
-from game.models.state import GameState
+from game.models.player import Player
 
 # Em empate, vale a ordem desta tabela.
 PROFILES = (
@@ -17,26 +17,45 @@ PROFILES = (
      "Kael colocou a si mesmo em primeiro lugar. Sobreviveu às ruínas, mas deixou para trás quem talvez soubesse quem ele era."),
 )
 
+# Decisão final: em quem Kael vai confiar.
+DECISIONS = (
+    ("darian", "Confiar em Darian"),
+    ("lira", "Confiar em Lira"),
+    ("ambos", "Confiar nos dois"),
+    ("sozinho", "Seguir sozinho"),
+)
+TRUST_NEEDED = {"darian": 30, "lira": 40}
+
 
 @dataclass(frozen=True)
 class Ending:
     titulo: str
     descricao: str
-    destino_darian: str
+    destino: str
 
 
-def compute_ending(state: GameState, final_intent: str | None) -> Ending:
-    player = state.player
-    attribute, titulo, descricao = max(PROFILES, key=lambda p: (getattr(player, p[0]), -PROFILES.index(p)))
-    trust = state.npc.confianca_em_kael
-    if final_intent == "egoismo":
-        destino = "Darian ficou para trás, sozinho entre os mortos."
-    elif final_intent in ("empatia", "lealdade") and trust >= 40:
-        destino = "Darian foi levado para longe das ruínas, apoiado no ombro de Kael."
-    elif trust >= 40:
-        destino = "Darian passou a confiar em Kael e promete contar mais quando chegar a hora."
-    elif trust <= 10:
-        destino = "Darian não confia mais em Kael. O que sabe, vai guardar para si."
+def profile(player: Player) -> tuple[str, str]:
+    _, titulo, descricao = max(PROFILES, key=lambda p: (getattr(player, p[0]), -PROFILES.index(p)))
+    return titulo, descricao
+
+
+def compute_ending(player: Player, trust: dict[str, int], decision: str) -> Ending:
+    titulo, descricao = profile(player)
+    darian_ok = trust["darian"] >= TRUST_NEEDED["darian"]
+    lira_ok = trust["lira"] >= TRUST_NEEDED["lira"]
+    if decision == "darian":
+        destino = ("Kael segue ao lado de Darian. O soldado promete contar, aos poucos, quem Kael foi na guerra."
+                   if darian_ok else
+                   "Kael estende a mão a Darian, mas o soldado desvia o olhar. A confiança perdida nas ruínas não volta tão cedo.")
+    elif decision == "lira":
+        destino = ("Kael parte com Lira. A curandeira ainda guarda segredos, mas agora caminha ao lado dele."
+                   if lira_ok else
+                   "Lira aceita a companhia de Kael com cautela. Ainda não confia nele o bastante para contar o que sabe.")
+    elif decision == "ambos":
+        destino = ("Kael reúne Darian e Lira. Pela primeira vez desde que despertou, ele não está sozinho."
+                   if darian_ok and lira_ok else
+                   "Kael tenta unir os dois, mas a desconfiança que semeou pesa mais que as ruínas.")
     else:
-        destino = "Darian ainda hesita. A confiança entre os dois está por um fio."
+        destino = ("Kael deixa as ruínas sozinho, levando apenas o medalhão e as perguntas. "
+                   "O que Darian e Lira sabiam fica para trás.")
     return Ending(titulo, descricao, destino)

@@ -19,7 +19,7 @@ def test_choice_updated_before_thread_and_duplicates_blocked():
     entered, release = Event(), Event()
     received = []
 
-    def respond(state, choice, history=(), first_id=1000):
+    def respond(state, choice, *args):
         received.append((state, choice))
         entered.set()
         assert release.wait(3)
