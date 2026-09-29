@@ -1,3 +1,4 @@
+import json
 import time
 from threading import Event
 from unittest.mock import MagicMock
@@ -11,6 +12,15 @@ from game.screens.gameplay import GameplayScreen
 from game.screens.menu import MenuScreen
 from game.systems.dialogue import DialogueService
 from game.systems.openai_client import OpenAIClient
+
+
+def reply(prompt, fala="Ainda respiro. Fique comigo."):
+    """Turnos pedem JSON (fala + opções); fala final e fragmentos pedem texto."""
+    if prompt.schema is None:
+        return fala
+    return json.dumps({"fala": fala, "opcoes": [
+        {"texto": f"Resposta {intent}", "intencao": intent}
+        for intent in ("curiosidade", "empatia", "lealdade", "agressividade")]})
 
 
 def click(rect):
@@ -29,7 +39,7 @@ def wait_for_ui(app):
 @pytest.fixture
 def app():
     client = MagicMock(spec=OpenAIClient)
-    client.generate.return_value = "Ainda respiro. Fique comigo."
+    client.generate.side_effect = reply
     app = GameApp(DialogueService(client))
     yield app, client
     app.close()
@@ -42,7 +52,7 @@ def test_menu_choice_pending_result_and_reset(app):
     def delayed(prompt):
         entered.set()
         assert release.wait(3)
-        return "Ainda respiro. Fique comigo."
+        return reply(prompt)
 
     client.generate.side_effect = delayed
     assert isinstance(app.screen, MenuScreen)
@@ -129,13 +139,14 @@ def test_full_playthrough_fragments_and_ending(app):
 
     app, client = app
     app.handle_event(click(MenuScreen.NEW_GAME))
-    for index in (2, 2, 1):  # Ajudar → Estancar → Exigir a verdade
-        app.handle_event(click(GameplayScreen.CHOICE_RECTS[index]))
+    for _ in range(5):  # Ajudar o soldado, depois sempre a opção gerada de lealdade
+        app.handle_event(click(GameplayScreen.CHOICE_RECTS[2]))
         wait_for_ui(app)
         app.draw()
     screen = app.screen
+    assert screen.encounter.turns[1].choice.label == "Resposta lealdade"
     assert screen.encounter.finished
-    assert set(screen.encounter.memories) == {"darian", "a_batalha"}
+    assert set(screen.encounter.memories) == {"darian", "o_medalhao"}
     app.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_f))
     assert isinstance(app.screen, FragmentsScreen)
     app.draw()
@@ -145,13 +156,13 @@ def test_full_playthrough_fragments_and_ending(app):
     assert app.screen is screen
     app.handle_event(click(GameplayScreen.ENDING))
     assert isinstance(app.screen, EndingScreen)
-    assert app.screen.ending.titulo == "O Protetor"
+    assert app.screen.ending.titulo == "O Companheiro"
     app.draw()
     app.handle_event(click(EndingScreen.MENU))
     assert isinstance(app.screen, MenuScreen)
     app.handle_event(click(MenuScreen.FRAGMENTS))
-    assert set(app.screen.memories) == {"darian", "a_batalha"}
+    assert set(app.screen.memories) == {"darian", "o_medalhao"}
     app.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
     assert isinstance(app.screen, MenuScreen)
-    # 3 falas + 2 fragmentos; nenhuma chamada extra.
-    assert client.generate.call_count == 5
+    # 5 turnos + 2 fragmentos; nenhuma chamada extra.
+    assert client.generate.call_count == 7

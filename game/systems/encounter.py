@@ -3,7 +3,7 @@ from queue import Empty, Queue
 from threading import Thread
 
 from game.models.state import new_game
-from game.systems.choices import ROUNDS, Choice, apply_choice, get_choice
+from game.systems.choices import TOTAL_TURNS, Choice, apply_effects, fallback_options
 from game.systems.dialogue import DialogueResult, DialogueService, ERROR_MESSAGE
 from game.systems.fragments import Fragment, Memory, newly_unlocked
 
@@ -15,7 +15,7 @@ class Turn:
 
 
 class Encounter:
-    """Encontro com Darian em rodadas. Estado e consumo da fila pertencem ao loop principal."""
+    """Conversa com Darian em turnos. Estado e consumo da fila pertencem ao loop principal."""
 
     def __init__(self, service: DialogueService):
         self.service = service
@@ -40,13 +40,18 @@ class Encounter:
 
     @property
     def finished(self) -> bool:
-        return len(self.turns) == len(ROUNDS) and not self.generation_in_progress
+        return len(self.turns) == TOTAL_TURNS and not self.generation_in_progress
+
+    @property
+    def options_generated(self) -> bool:
+        return bool(self.result and self.result.options)
 
     @property
     def current_choices(self) -> tuple[Choice, ...]:
         if self.generation_in_progress or self.finished:
             return ()
-        return ROUNDS[self.round_index]
+        # Opções geradas pela IA na fala anterior; sem elas, as opções fixas de reserva.
+        return self.result.options if self.options_generated else fallback_options(self.round_index + 1)
 
     def history(self) -> tuple[dict, ...]:
         # Somente falas realmente geradas entram no contexto; reservas não viram "memória" da IA.
@@ -54,16 +59,15 @@ class Encounter:
                      for t in self.turns if t.result is not None)
 
     def choose(self, choice_id: int) -> bool:
-        if choice_id not in {c.id for c in self.current_choices}:
+        choice = next((c for c in self.current_choices if c.id == choice_id), None)
+        if choice is None:
             return False
-        choice = get_choice(choice_id)
         history = self.history()
         self.new_memories = ()
-        self.state = apply_choice(self.state, choice.id)
+        self.state = apply_effects(self.state, choice)
         self.turns.append(Turn(choice))
-        chosen = tuple(t.choice.id for t in self.turns)
         # O desbloqueio é decidido aqui, pelo Python, antes de qualquer chamada à IA.
-        unlocked = newly_unlocked(self.state, chosen, set(self.memories))
+        unlocked = newly_unlocked(self.state, set(self.memories))
         if unlocked:
             total = len(self.memories) + len(unlocked)
             self.state = replace(self.state, player=replace(self.state.player, fragmentos=total))
@@ -81,10 +85,16 @@ class Encounter:
         self.generation_in_progress = True
         self.turns[-1].result = None
         state, choice, service = self.state, self.choice, self.service
+        last_turn = len(self.turns) == TOTAL_TURNS
+        first_option_id = 1000 + len(self.turns) * 10
 
         def work():
             try:
-                result = service.respond(state, choice, history)
+                # No último turno não há próximas opções: apenas a fala final de Darian.
+                result = (service.respond(state, choice, history) if last_turn
+                          else service.converse(state, choice, history, first_option_id))
+                if not isinstance(result, DialogueResult):
+                    raise TypeError("Resultado inválido.")
             except Exception:
                 result = DialogueResult(error=ERROR_MESSAGE)
             memories = []

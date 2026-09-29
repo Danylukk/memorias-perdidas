@@ -25,14 +25,14 @@ class Ending:
     destino_darian: str
 
 
-def compute_ending(state: GameState, final_choice_id: int | None) -> Ending:
+def compute_ending(state: GameState, final_intent: str | None) -> Ending:
     player = state.player
     attribute, titulo, descricao = max(PROFILES, key=lambda p: (getattr(player, p[0]), -PROFILES.index(p)))
     trust = state.npc.confianca_em_kael
-    if final_choice_id == 9:
-        destino = "Darian foi levado para longe das ruínas, apoiado no ombro de Kael."
-    elif final_choice_id == 12:
+    if final_intent == "egoismo":
         destino = "Darian ficou para trás, sozinho entre os mortos."
+    elif final_intent in ("empatia", "lealdade") and trust >= 40:
+        destino = "Darian foi levado para longe das ruínas, apoiado no ombro de Kael."
     elif trust >= 40:
         destino = "Darian passou a confiar em Kael e promete contar mais quando chegar a hora."
     elif trust <= 10:

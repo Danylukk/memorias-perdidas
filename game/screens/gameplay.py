@@ -2,19 +2,16 @@
 import pygame
 
 from game.screens.ui import GOLD, MUTED, RED, background, bar, button, dialogue_panel, label, panel, paragraph, ruins_scene
-from game.systems.choices import ROUNDS
+from game.systems.choices import TOTAL_TURNS
 from game.systems.encounter import Encounter
 from game.systems.fragments import TOTAL_FRAGMENTS
-
-ROUND_TITLES = ("O despertar", "Sangue e perguntas", "A decisão")
-
 
 class GameplayScreen:
     MENU = pygame.Rect(880, 24, 280, 46)
     FRAGMENTS = pygame.Rect(880, 610, 280, 50)
     RETRY = pygame.Rect(880, 680, 280, 50)
     ENDING = pygame.Rect(40, 600, 800, 64)
-    CHOICE_RECTS = tuple(pygame.Rect(40 + (i % 2) * 410, 584 + (i // 2) * 72, 390, 58) for i in range(4))
+    CHOICE_RECTS = tuple(pygame.Rect(40, 580 + i * 44, 800, 40) for i in range(4))
 
     def __init__(self, dialogue_service):
         self.encounter = Encounter(dialogue_service)
@@ -82,10 +79,9 @@ class GameplayScreen:
         label(surface, f"Fragmentos: {player.fragmentos}/{TOTAL_FRAGMENTS}", (600, 62), 16, GOLD)
         button(surface, self.MENU, "Voltar ao menu  [Esc]", not encounter.generation_in_progress)
         surface.blit(self.scene, (40, 115))
-        shown_round = min(encounter.round_index + (0 if encounter.generation_in_progress or encounter.finished else 1),
-                          len(ROUNDS)) or 1
-        label(surface, f"RUÍNAS / RODADA {shown_round}/{len(ROUNDS)} — {ROUND_TITLES[shown_round - 1].upper()}",
-              (40, 94), 16)
+        shown_turn = min(encounter.round_index + (0 if encounter.generation_in_progress or encounter.finished else 1),
+                         TOTAL_TURNS) or 1
+        label(surface, f"RUÍNAS / TURNO {shown_turn}/{TOTAL_TURNS}", (40, 94), 16)
         label(surface, "KAEL", (268, 372), 16, GOLD)
         label(surface, "DARIAN", (566, 372), 16, GOLD)
         self._draw_side_panel(surface, player, npc)
@@ -94,14 +90,13 @@ class GameplayScreen:
         choices = encounter.current_choices
         if encounter.finished:
             button(surface, self.ENDING, "Ver desfecho  [Enter]", selected=True)
-        else:
-            displayed = choices or ROUNDS[max(0, encounter.round_index - 1)]
-            for index, (choice, rect) in enumerate(zip(displayed, self.CHOICE_RECTS)):
-                button(surface, rect, f"{index + 1}. {choice.label}", bool(choices), encounter.choice == choice)
+        elif choices:
+            for index, (choice, rect) in enumerate(zip(choices, self.CHOICE_RECTS)):
+                button(surface, rect, f"{index + 1}. {choice.label}", size=17)
         button(surface, self.FRAGMENTS, "Fragmentos  [F]", not encounter.generation_in_progress)
         if self.failed and not encounter.generation_in_progress:
             button(surface, self.RETRY, "Tentar IA de novo [R]")
-        label(surface, self._footer(), (40, 754), 16, MUTED)
+        label(surface, self._footer(), (40, 768), 16, MUTED)
 
     def _draw_side_panel(self, surface, player, npc):
         panel(surface, pygame.Rect(880, 115, 280, 480))
@@ -148,5 +143,9 @@ class GameplayScreen:
         if self.failed:
             return "IA indisponível: fala de reserva exibida. Continue ou tente a IA de novo (efeitos mantidos)."
         if encounter.finished:
-            return "O encontro terminou. Veja o desfecho de Kael."
-        return "Escolha com o mouse ou teclas 1–4. Respostas de Darian geradas por ChatGPT (LLM)."
+            return "A conversa terminou. Veja o desfecho de Kael."
+        if encounter.options_generated:
+            return "Fala de Darian e opções de Kael geradas por ChatGPT (LLM). Teclas 1–4 ou mouse."
+        if encounter.round_index == 0:
+            return "Opções iniciais do roteiro. Escolha com o mouse ou teclas 1–4."
+        return "Opções de reserva (roteirizadas). Escolha com o mouse ou teclas 1–4."

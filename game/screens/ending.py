@@ -13,7 +13,7 @@ class EndingScreen:
     def __init__(self, encounter):
         self.state = encounter.state
         self.memories = dict(encounter.memories)
-        self.ending = compute_ending(encounter.state, encounter.choice.id if encounter.choice else None)
+        self.ending = compute_ending(encounter.state, encounter.choice.intent if encounter.choice else None)
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:

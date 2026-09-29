@@ -2,7 +2,7 @@ import json
 from dataclasses import asdict, dataclass
 
 from game.models.state import GameState
-from game.systems.choices import Choice
+from game.systems.choices import INTENTS, TOTAL_TURNS, Choice
 from game.systems.fragments import Fragment
 
 RULES = """Você interpreta Darian, personagem do RPG dark fantasy Memórias Perdidas.
@@ -40,13 +40,57 @@ REGRAS OBRIGATÓRIAS:
 """
 
 
+TURN_RULES = """
+FORMATO DO TURNO:
+- Responda no JSON do esquema. As regras de estilo acima valem para o campo "fala".
+- Em "opcoes", sugira exatamente 4 respostas curtas que Kael pode dizer ou fazer em seguida,
+  reagindo diretamente à sua fala, cada uma com no máximo 70 caracteres.
+- Cada opção deve ter uma "intencao" diferente dentre: curiosidade, empatia, lealdade, agressividade, egoismo.
+- Kael não tem memória: as opções não podem afirmar fatos do passado dele nem revelar tópicos bloqueados.
+- As opções são falas ou ações breves de Kael, sem aspas, sem numeração e sem mencionar atributos.
+- Conduza a conversa para um desfecho conforme turnos_restantes diminuem.
+"""
+
+TURN_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "fala": {"type": "string"},
+        "opcoes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "texto": {"type": "string"},
+                    "intencao": {"type": "string", "enum": list(INTENTS)},
+                },
+                "required": ["texto", "intencao"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["fala", "opcoes"],
+    "additionalProperties": False,
+}
+
+
 @dataclass(frozen=True)
 class DialoguePrompt:
     instructions: str
     context: str
+    # Quando presente, a resposta deve seguir este JSON Schema (Structured Outputs).
+    schema: dict | None = None
+    max_output_tokens: int = 512
 
 
 class PromptBuilder:
+    def build_turn(self, state: GameState, choice: Choice, history: tuple[dict, ...] = ()) -> DialoguePrompt:
+        base = self.build(state, choice, history)
+        context = json.loads(base.context)
+        context["turnos_restantes"] = TOTAL_TURNS - len(history) - 1
+        return DialoguePrompt(base.instructions + TURN_RULES,
+                              json.dumps(context, ensure_ascii=False, separators=(",", ":")),
+                              TURN_SCHEMA, 1200)
+
     def build(self, state: GameState, choice: Choice, history: tuple[dict, ...] = ()) -> DialoguePrompt:
         npc = state.npc
         # Lista explícita de liberação; jamais serializar o NPC inteiro.

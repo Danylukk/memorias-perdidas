@@ -113,7 +113,7 @@ def paragraph(surface, text, rect, size=20, color=TEXT):
     surface.set_clip(previous_clip)
 
 
-def button(surface, rect, text, enabled=True, selected=False):
+def button(surface, rect, text, enabled=True, selected=False, size=20):
     surface.blit(frame("ui/botao_menu_base.png", rect.size), rect)
     if not enabled and not selected:
         shade = pygame.Surface(rect.size, pygame.SRCALPHA)
@@ -121,7 +121,7 @@ def button(surface, rect, text, enabled=True, selected=False):
         surface.blit(shade, rect)
     if selected:
         pygame.draw.rect(surface, GOLD, rect.inflate(-4, -4), 1)
-    label(surface, text, (rect.x + 16, rect.y + (rect.height - 22) // 2), 20,
+    label(surface, text, (rect.x + 16, rect.y + (rect.height - size - 2) // 2), size,
           TEXT if enabled or selected else MUTED)
 
 

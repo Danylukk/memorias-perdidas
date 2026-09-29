@@ -1,19 +1,28 @@
-"""Mecânicas da CP5: rodadas, fragmentos de memória, desfecho e fallback."""
+"""Mecânicas da CP5: conversa em turnos com opções geradas, fragmentos, desfecho e fallback."""
 import json
 import time
 from dataclasses import replace
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 
+from game.config import Settings
 from game.models.state import new_game
-from game.systems.choices import ROUNDS, apply_choice, get_choice
-from game.systems.dialogue import DialogueResult, DialogueService, ERROR_MESSAGE
+from game.systems.choices import (CHOICES, INTENTS, ROUND_2, TOTAL_TURNS, apply_choice, apply_effects,
+                                  choice_from_intent, fallback_options, get_choice)
+from game.systems.dialogue import DialogueResult, DialogueService, ERROR_MESSAGE, parse_turn
 from game.systems.encounter import Encounter
 from game.systems.ending import compute_ending
 from game.systems.fragments import FRAGMENTS, get_fragment, newly_unlocked
 from game.systems.openai_client import OpenAIClient
-from game.systems.prompt_builder import PromptBuilder
+from game.systems.prompt_builder import PromptBuilder, TURN_SCHEMA
+
+
+def turn_json(fala="Você acordou mesmo... Achei que tinha morrido.",
+              intents=("curiosidade", "empatia", "lealdade", "agressividade")):
+    return json.dumps({"fala": fala, "opcoes": [
+        {"texto": f"Opção de {intent}", "intencao": intent} for intent in intents]})
 
 
 def await_result(encounter):
@@ -24,25 +33,45 @@ def await_result(encounter):
     assert not encounter.generation_in_progress
 
 
-def play(encounter, *choice_ids):
-    for choice_id in choice_ids:
-        assert encounter.choose(choice_id)
-        await_result(encounter)
+def pick(encounter, intent):
+    """Escolhe a opção atual com a intenção pedida."""
+    choice = next(c for c in encounter.current_choices if c.intent == intent)
+    assert encounter.choose(choice.id)
+    await_result(encounter)
+    return choice
 
 
-def ok_service():
+def generated_options(turn, intents=("curiosidade", "empatia", "lealdade", "agressividade")):
+    return tuple(choice_from_intent(1000 + turn * 10 + i, f"Opção {turn}-{intent}", intent)
+                 for i, intent in enumerate(intents))
+
+
+def ai_service(intents=("curiosidade", "empatia", "lealdade", "agressividade")):
     service = MagicMock()
-    service.respond.return_value = DialogueResult(text="Fique comigo.")
+    turn = iter(range(1, 10))
+    service.converse.side_effect = lambda state, choice, history, first_id: DialogueResult(
+        text="Fique comigo.", options=generated_options(next(turn), intents))
+    service.respond.return_value = DialogueResult(text="Adeus, Kael.")
     service.remember.return_value = DialogueResult(text="Fogo e metal.")
     return service
 
 
-def test_three_rounds_of_four_unique_choices():
-    assert len(ROUNDS) == 3
-    ids = [c.id for round_choices in ROUNDS for c in round_choices]
-    assert all(len(r) == 4 for r in ROUNDS)
-    assert len(ids) == len(set(ids)) == 12
-    assert all(get_choice(c.id).fallback.strip() for r in ROUNDS for c in r)
+def test_intent_effects_are_fixed_in_python():
+    assert set(INTENTS) == {"curiosidade", "empatia", "lealdade", "agressividade", "egoismo"}
+    state = apply_effects(new_game(), choice_from_intent(1, "Chega de rodeios.", "agressividade"))
+    assert state.player.agressividade == 1
+    assert state.player.vida == 95
+    assert state.npc.confianca_em_kael == 10
+
+
+def test_fixed_and_fallback_options():
+    assert fallback_options(1) == CHOICES
+    assert fallback_options(2) == ROUND_2
+    for turn in range(3, TOTAL_TURNS + 1):
+        options = fallback_options(turn)
+        assert len(options) == 4
+        assert len({c.intent for c in options}) == 4
+        assert all(c.fallback for c in options)
 
 
 def test_cp4_table_effects():
@@ -58,93 +87,157 @@ def test_cp4_table_effects():
 def test_stats_are_clamped():
     state = new_game()
     for _ in range(3):
-        state = apply_choice(state, 12)
+        state = apply_choice(state, 4)
     assert state.npc.confianca_em_kael == 0
-    for _ in range(5):
-        state = apply_choice(state, 9)
+    for _ in range(8):
+        state = apply_choice(state, 7)
     assert state.player.energia == 0
-    assert state.npc.confianca_em_kael == 50
 
 
-def test_full_session_has_end_and_only_current_round_choices():
-    service = ok_service()
+def test_conversation_uses_generated_options_and_ends_after_five_turns():
+    service = ai_service()
     encounter = Encounter(service)
-    assert not encounter.choose(5)  # rodada 2 ainda não começou
-    play(encounter, 3)
-    assert not encounter.choose(1)  # rodada 1 já foi
-    play(encounter, 7, 9)
+    assert encounter.current_choices == CHOICES
+    assert encounter.choose(3)
+    await_result(encounter)
+    assert encounter.options_generated
+    assert encounter.current_choices == generated_options(1)
+    assert not encounter.choose(1)  # opção fixa do turno 1 não vale mais
+    for _ in range(TOTAL_TURNS - 1):
+        pick(encounter, "empatia")
     assert encounter.finished
     assert encounter.current_choices == ()
-    assert not encounter.choose(10)
-    assert service.respond.call_count == 3
-    # O histórico enviado na última rodada contém as falas anteriores.
+    assert service.converse.call_count == TOTAL_TURNS - 1
+    service.respond.assert_called_once()  # último turno: só a fala final
     history = service.respond.call_args.args[2]
-    assert [h["fala_de_darian"] for h in history] == ["Fique comigo.", "Fique comigo."]
+    assert len(history) == TOTAL_TURNS - 1
+    assert history[1]["acao"] == 'Kael respondeu: "Opção 1-empatia"'
 
 
-def test_fragments_unlocked_by_python_and_text_by_ai():
-    service = ok_service()
+def test_failed_turn_falls_back_to_fixed_options_and_continues():
+    service = ai_service()
+    service.converse.side_effect = lambda *args: DialogueResult(error=ERROR_MESSAGE)
     encounter = Encounter(service)
-    play(encounter, 3, 7)  # confiança 20 → 30 → 40
-    assert set(encounter.memories) == {"darian"}
-    assert encounter.state.player.fragmentos == 1
-    memory = encounter.memories["darian"]
-    assert memory.generated and memory.text == "Fogo e metal."
-    assert [m.fragment.id for m in encounter.new_memories] == ["darian"]
-    play(encounter, 10)
-    assert set(encounter.memories) == {"darian", "a_batalha"}
-    assert encounter.state.player.fragmentos == 2
-    assert service.remember.call_count == 2
-
-
-def test_fragment_failure_uses_labeled_fallback():
-    service = ok_service()
-    service.remember.return_value = DialogueResult(error=ERROR_MESSAGE)
-    encounter = Encounter(service)
-    play(encounter, 2, 8)
-    memory = encounter.memories["o_medalhao"]
-    assert not memory.generated
-    assert memory.text == get_fragment("o_medalhao").fallback
-
-
-def test_dialogue_failure_does_not_block_progress_and_retry_keeps_memories():
-    service = ok_service()
-    service.respond.side_effect = [DialogueResult(text="Quem é você?"), DialogueResult(error=ERROR_MESSAGE),
-                                   DialogueResult(text="Agora sim.")]
-    encounter = Encounter(service)
-    play(encounter, 1, 5)
+    assert encounter.choose(1)
+    await_result(encounter)
     assert not encounter.result.ok
-    assert "a_batalha" in encounter.memories
+    assert encounter.current_choices == ROUND_2
+    pick(encounter, "curiosidade")
+    assert encounter.current_choices == fallback_options(3)
+    for _ in range(TOTAL_TURNS - 2):
+        encounter.choose(encounter.current_choices[0].id)
+        await_result(encounter)
+    assert encounter.finished
+
+
+def test_retry_after_failure_brings_generated_options():
+    service = ai_service()
+    results = iter([DialogueResult(error=ERROR_MESSAGE),
+                    DialogueResult(text="Agora sim.", options=generated_options(1))])
+    service.converse.side_effect = lambda *args: next(results)
+    encounter = Encounter(service)
+    encounter.choose(3)
+    await_result(encounter)
     state = encounter.state
     assert encounter.retry()
     await_result(encounter)
     assert encounter.result.ok and encounter.state == state
-    assert [m.fragment.id for m in encounter.new_memories] == ["a_batalha"]
-    assert service.remember.call_count == 1
-    play(encounter, 11)
-    assert encounter.finished
+    assert encounter.current_choices == generated_options(1)
+
+
+def test_fragments_unlocked_by_python_and_text_by_ai():
+    service = ai_service()
+    encounter = Encounter(service)
+    encounter.choose(3)  # confiança 30
+    await_result(encounter)
+    pick(encounter, "lealdade")  # 35
+    assert encounter.memories == {}
+    pick(encounter, "lealdade")  # 40 e lealdade 3
+    assert set(encounter.memories) == {"darian", "o_medalhao"}
+    assert encounter.state.player.fragmentos == 2
+    assert all(m.generated and m.text == "Fogo e metal." for m in encounter.memories.values())
+    assert service.remember.call_count == 2
+
+
+def test_fragment_failure_uses_labeled_fallback():
+    service = ai_service()
+    service.remember.return_value = DialogueResult(error=ERROR_MESSAGE)
+    encounter = Encounter(service)
+    encounter.choose(1)
+    await_result(encounter)
+    pick(encounter, "agressividade")
+    pick(encounter, "agressividade")
+    memory = encounter.memories["maos_manchadas"]
+    assert not memory.generated
+    assert memory.text == get_fragment("maos_manchadas").fallback
 
 
 def test_newly_unlocked_ignores_already_owned():
     state = replace(new_game(), npc=replace(new_game().npc, confianca_em_kael=50))
-    assert [f.id for f in newly_unlocked(state, (), set())] == ["darian"]
-    assert newly_unlocked(state, (), {"darian"}) == ()
+    assert [f.id for f in newly_unlocked(state, set())] == ["darian"]
+    assert newly_unlocked(state, {"darian"}) == ()
     assert len(FRAGMENTS) == 4
 
 
-@pytest.mark.parametrize("choices,title,fate", [
-    ((3, 7, 9), "O Protetor", "levado para longe"),
-    ((1, 6, 10), "O Implacável", "não confia mais"),
-    ((2, 5, 11), "O Buscador", "hesita"),
-    ((4, 8, 12), "O Sobrevivente", "ficou para trás"),
+@pytest.mark.parametrize("choice_ids,intent,title,fate", [
+    ((3, 7), "lealdade", "O Protetor", "levado para longe"),
+    ((1, 6), "agressividade", "O Implacável", "não confia mais"),
+    ((2, 5), "curiosidade", "O Buscador", "hesita"),
+    ((4,), "egoismo", "O Sobrevivente", "ficou para trás"),
 ])
-def test_endings(choices, title, fate):
+def test_endings(choice_ids, intent, title, fate):
     state = new_game()
-    for choice_id in choices:
+    for choice_id in choice_ids:
         state = apply_choice(state, choice_id)
-    ending = compute_ending(state, choices[-1])
+    ending = compute_ending(state, intent)
     assert ending.titulo == title
     assert fate in ending.destino_darian
+
+
+def test_parse_turn_validates_structure():
+    result = parse_turn(turn_json(), 1010)
+    assert result.ok
+    assert [c.id for c in result.options] == [1010, 1011, 1012, 1013]
+    assert result.options[3].intent == "agressividade"
+    bad = [
+        "não é json",
+        turn_json(intents=("curiosidade", "empatia", "lealdade")),
+        turn_json(intents=("curiosidade", "empatia", "lealdade", "matar")),
+        turn_json(fala="Sou o ChatGPT."),
+        json.dumps({"fala": "Fique.", "opcoes": [{"texto": "a" * 81, "intencao": "empatia"}] * 4}),
+        json.dumps({"fala": "Fique.", "opcoes": [{"texto": "Igual", "intencao": "empatia"}] * 4}),
+    ]
+    for raw in bad:
+        with pytest.raises(Exception):
+            parse_turn(raw, 1010)
+
+
+def test_turn_prompt_schema_and_rules():
+    history = ({"acao": "Kael decidiu ajudar Darian.", "fala_de_darian": "Obrigado."},)
+    state = apply_choice(new_game(), 3)
+    prompt = PromptBuilder().build_turn(state, get_choice(3), history)
+    data = json.loads(prompt.context)
+    assert data["rodada"] == 2
+    assert data["turnos_restantes"] == TOTAL_TURNS - 2
+    assert data["historico"] == list(history)
+    assert prompt.schema == TURN_SCHEMA
+    assert "exatamente 4" in prompt.instructions and "Não invente" in prompt.instructions
+    assert TURN_SCHEMA["properties"]["opcoes"]["items"]["properties"]["intencao"]["enum"] == list(INTENTS)
+
+
+def test_openai_client_sends_json_schema(monkeypatch):
+    factory = MagicMock()
+    monkeypatch.setattr("game.systems.openai_client.OpenAI", factory)
+    monkeypatch.setattr(Settings, "validate", lambda self: None)
+    sdk = factory.return_value.__enter__.return_value
+    sdk.responses.create.return_value = SimpleNamespace(status="completed", output_text=turn_json())
+    prompt = PromptBuilder().build_turn(new_game(), get_choice(1))
+    result = DialogueService(OpenAIClient(Settings(model="m"))).converse(new_game(), get_choice(1), (), 1010)
+    assert result.ok and len(result.options) == 4
+    kwargs = sdk.responses.create.call_args.kwargs
+    assert kwargs["text"]["format"]["type"] == "json_schema"
+    assert kwargs["text"]["format"]["strict"] is True
+    assert kwargs["max_output_tokens"] == prompt.max_output_tokens
 
 
 def test_fragment_prompt_and_validation():
@@ -160,12 +253,3 @@ def test_fragment_prompt_and_validation():
     assert "não revele quem causou" in context["tema"]
     client.generate.return_value = "Um. Dois. Três. Quatro. Cinco."
     assert not DialogueService(client).remember(new_game(), fragment).ok
-
-
-def test_dialogue_prompt_includes_round_and_history():
-    history = ({"acao": "Kael decidiu ajudar Darian.", "fala_de_darian": "Obrigado."},)
-    state = apply_choice(apply_choice(new_game(), 3), 7)
-    data = json.loads(PromptBuilder().build(state, get_choice(7), history).context)
-    assert data["rodada"] == 2
-    assert data["historico"] == list(history)
-    assert "histórico" in PromptBuilder().build(state, get_choice(7)).instructions
