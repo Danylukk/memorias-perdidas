@@ -7,8 +7,8 @@ RPG narrativo dark fantasy: enquanto Kael descobre quem era, o jogador decide qu
 
 Python 3.11+ com suporte às dependências. Ambiente validado: **Python 3.12.14 / Windows**.
 Pygame 2.6.1, SDK oficial OpenAI, python-dotenv e pytest estão em `requirements.txt`.
-Para reproduzir este ambiente, prefira Python 3.12; o Python global desta máquina é 3.14,
-mas o `.venv` preparado para o projeto usa 3.12.
+Para reproduzir o projeto, prefira Python 3.12. A revisão de 09/10/2026 também foi executada
+em Linux com Python 3.12.14; o ambiente virtual deve ser criado após obter o código.
 
 Em um terminal PowerShell na pasta do projeto, para preparar um ambiente novo
 (o comando `python` deve apontar para a versão escolhida):
@@ -19,7 +19,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-O `.venv` desta entrega já está instalado. Basta ativá-lo. Também é possível executar
+Após instalar as dependências, ative o ambiente virtual. Também é possível executar
 diretamente `.\.venv\Scripts\python.exe`, sem depender da ativação.
 
 ## Configuração da API
@@ -59,7 +59,8 @@ As três telas seguem os mockups da CP4 (16:9): **Menu Principal** (Figura 4), *
 e **Fragmentos de Memória** (Figura 6). Todos os rodapés identificam os assets gerados por IA.
 
 **Menu:** NOVO JOGO, CONTINUAR, FRAGMENTOS, CONFIGURAÇÕES e SAIR (mouse, ↑/↓ + Enter; Esc sai).
-CONTINUAR retoma a última partida salva; FRAGMENTOS mostra todas as memórias já recuperadas.
+CONTINUAR retoma a última partida salva; FRAGMENTOS mostra todas as memórias já recuperadas. Textos longos são paginados com
+PgUp/PgDn ou a roda do mouse, com a página indicada no detalhe.
 
 A jornada segue a premissa e o objetivo da CP4 (§1.3 e §1.7):
 
@@ -80,7 +81,7 @@ A jornada segue a premissa e o objetivo da CP4 (§1.3 e §1.7):
 
 Durante a conversa, as opções ficam bloqueadas e aparece **“Darian está pensando...”** (thread separada).
 Cenas e telas trocam com um fade. Os efeitos de cada escolha aparecem acima de Kael; **TAB** abre o perfil completo; **F** abre os Fragmentos;
-**Esc** volta ao menu (o progresso é salvo). O botão de fechar a janela funciona durante a geração.
+**Esc** volta ao menu (o estado narrativo é salvo; a posição exata na exploração não é persistida). O botão de fechar a janela funciona durante a geração.
 
 ### Regras (sempre em Python)
 
@@ -192,11 +193,10 @@ e [SDK Python — retries e timeouts](https://developers.openai.com/api/referenc
 Com o ambiente ativado, execute nesta ordem:
 
 ```powershell
-python -m compileall .
+python -m compileall -q game tests main.py
 pytest -q
 ```
 
-O primeiro comando também visita o `.venv` quando ele fica dentro do projeto.
 A suíte usa mocks e bloqueia conexões de rede por uma fixture automática. Nenhuma chamada real é feita
 por `pytest -q`. Os testes de interface usam o driver SDL `dummy`, sem abrir janela.
 
@@ -226,3 +226,11 @@ os 4 do mockup podem ser recuperados; os demais aparecem bloqueados. A exploraç
 única cena. Não há combate. As mudanças em relação à CP4 estão justificadas em `ENTREGA_CP5.md`,
 junto com o Diário de Vibe Coding e o checklist de testes. O histórico da primeira entrega do MVP
 está em `RELATORIO_MVP.md`.
+
+## Revisão de entrega — 09/10/2026
+
+A revisão sobre `paiva` passou em **94 testes**, incluindo 13 regressões de persistência,
+leitura dos textos, limites do HUD e créditos. A execução e inspeção visual usaram SDL
+`dummy`; não substituem a execução manual dos integrantes no computador de apresentação.
+Nenhuma chamada real à API foi realizada nesta revisão. Veja `VALIDACAO_CP5_2026-10-09.md`
+para as evidências, a comparação de branches e as pendências de vídeo e autoria do grupo.

@@ -224,7 +224,7 @@
       },
       "2": {
         "cuidado": {
-          "fala": "Darian vê o soldado que você foi. Eu vejo alguém que ainda pode escolher outro caminho.",
+          "fala": "Darian viu como você agiu nas ruínas. Eu vejo alguém que ainda pode escolher outro caminho.",
           "opcoes": [
             {"texto": "Quem eu fui, afinal?", "intencao": "curiosidade"},
             {"texto": "Quero escolher esse caminho.", "intencao": "lealdade"},

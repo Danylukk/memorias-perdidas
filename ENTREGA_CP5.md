@@ -27,9 +27,9 @@ Histórico técnico da primeira versão do MVP: ver `RELATORIO_MVP.md`.
 | Começo, meio e fim | Despertar (Darian) → exploração → Lira → decisão → desfecho |
 | Integração real de IA: texto | OpenAI Responses API pelo SDK oficial (`openai_client.py`); rótulo “Resposta narrativa — ChatGPT (LLM)” e “Lembrança — ChatGPT (LLM)” |
 | Integração real de IA: imagem | Todos os visuais são os assets aprovados da CP4, gerados com ChatGPT e identificados no rodapé de cada tela |
-| Extra: testes automatizados | 81 testes (`pytest -q`), sem rede |
+| Extra: testes automatizados | 94 testes (`pytest -q`), sem rede; 13 regressões adicionadas na revisão de 09/10/2026 |
 | Extra: mecânicas adicionais | Save/Continuar, galeria de fragmentos, perfil (TAB), decisão de confiança com desfechos |
-| Extra: tratamento de erro da IA | Roteiro offline ramificado; “Tentar IA [R]” sem reaplicar efeitos; o jogo nunca trava |
+| Extra: tratamento de erro da IA | Roteiro offline ramificado; “Tentar IA [R]” sem reaplicar efeitos; o turno continua por roteiro nos cenários de falha cobertos pelos testes |
 | Extra: polimento | Fade entre telas e cenas, texto animado, efeitos das escolhas exibidos na tela, aviso de memória recuperada, configurações |
 
 ---
@@ -153,7 +153,7 @@ Sem mudança: título, gênero, premissa, plataforma (PC), tecnologia (Python + 
 | 14 | Falha com API | Desligar a internet no meio da partida | “IA indisponível — roteiro offline”; a história continua; R tenta de novo | |
 | 15 | Janela | Redimensionar; fechar durante a espera | Proporção mantida; fecha sem travar | |
 
-**Testes automatizados:** `pytest -q` → 81 aprovados. Cobrem personagens e fragmentos da CP4, efeitos e limites, roteiro offline completo (Darian e Lira, 4 caminhos), opções geradas e validação do JSON, envio do JSON Schema à API, falha e nova tentativa, jornada completa (Darian → exploração → Lira → decisão), Lira reagindo a Darian, pontos de exploração, fade, desfechos, save/continuar, configurações e percursos completos pela interface.
+**Testes automatizados:** primeira versão da branch Paiva: 81 aprovados. Revisão de 09/10/2026: `python -m pytest -q` → **94 aprovados**. Os testes não são declarações de execução manual pelo grupo. Cobrem personagens e fragmentos da CP4, efeitos e limites, roteiro offline completo (Darian e Lira, 4 caminhos), opções geradas e validação do JSON, envio do JSON Schema à API, falha e nova tentativa, jornada completa (Darian → exploração → Lira → decisão), Lira reagindo a Darian, pontos de exploração, fade, desfechos, save/continuar, configurações e percursos completos pela interface.
 
 ---
 
@@ -166,3 +166,27 @@ Sem mudança: título, gênero, premissa, plataforma (PC), tecnologia (Python + 
 5. (50 s) Lira: conversa e decisão de confiança; tela de desfecho.
 6. (20 s) CONTINUAR e CONFIGURAÇÕES (desligar a IA → roteiro offline).
 7. (10 s) `pytest -q` rodando no terminal.
+
+---
+
+## 6. Revisão técnica de 09/10/2026
+
+Ver `VALIDACAO_CP5_2026-10-09.md` e `docs/evidencias/painel_validacao.jpg`.
+Foram corrigidos saves antes da primeira escolha e após investigar o medalhão,
+limites dos créditos e contador, leitura completa de falas e memórias longas e validação
+de intenções distintas. O prompt foi esclarecido para permitir somente as opções pedidas
+pelo esquema, e a fala offline de Lira que afirmava que Kael era soldado foi substituída
+por uma referência ao comportamento dele nas ruínas. Não houve troca de personagens,
+modalidade de IA, stack ou mecânicas.
+
+**Prompt real 10 — revisão de entrega:**
+> Hoje tem a entrega do MVP do projeto do jogo, verifique no teams o que o professor instruiu para a entrega, é a materia de PLN, verifque o que o professor está requisitando, e o nosso jogo está no github memorias-perdidas, verifique lá tambem todo o conteudo do jogo, aplique testes, verificações de Usabildiade, se da para mostrar ao professor se está fazendo sentido as coisas, verifique as branches o paiva subiu algumas verifique que elas foram as ultiams atualizações feitos do jogo, para fazer o merge para a main e tudo mais
+
+- Ferramenta nesta etapa: ChatGPT Work / Codex.
+- Resultado: conferência do enunciado e da CP4 no Teams/SharePoint, revisão das quatro branches,
+  execução das suítes, reprodução da falha de desenho da vertical slice, correções focadas e
+  13 testes de regressão, com inspeção de oito telas renderizadas.
+- Ajustes e rejeições: a vertical slice não foi integrada integralmente porque fecha ao desenhar
+  a exploração; as ideias compatíveis já estavam na Paiva. Correções e limites estão no relatório.
+- Revisão e entendimento pelos integrantes: **[GRUPO]**. A explicação própria do código e os
+  resultados dos testes manuais continuam sob responsabilidade dos integrantes.

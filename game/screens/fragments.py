@@ -2,7 +2,7 @@
 import pygame
 
 from game.screens.ui import (GOLD, GOLD_BRIGHT, MUTED, TEXT, background, button, cover, credits_footer, darken,
-                             divider, fragment_counter, label, lock, panel, paragraph)
+                             divider, fragment_counter, label, lock, panel, paragraph, wrap)
 from game.systems.fragments import FRAGMENTS, TOTAL_FRAGMENTS
 
 LOCKED_ART = tuple(f"fragments/bloqueado_{i}.png" for i in range(1, 9))
@@ -22,6 +22,22 @@ class FragmentsScreen:
         self.slots = list(FRAGMENTS) + [None] * (TOTAL_FRAGMENTS - len(FRAGMENTS))
         unlocked = [i for i, f in enumerate(self.slots) if f is not None and f.id in self.memories]
         self.selected = unlocked[0] if unlocked else 0
+        self.page = 0
+
+    def memory_pages(self, memory):
+        text = f"“{memory.text}”"
+        size = 17
+        while size > 13 and len(wrap(text, self.DETAIL.width - 52, size, italic=True)) * (size + 5) > 96:
+            size -= 1
+        lines = wrap(text, self.DETAIL.width - 52, size, italic=True)
+        per_page = max(1, 96 // (size + 5))
+        return [' '.join(lines[i:i + per_page]) for i in range(0, len(lines), per_page)], size
+
+    def turn_page(self, step):
+        fragment = self.slots[self.selected]
+        memory = self.memories.get(fragment.id) if fragment else None
+        if memory:
+            self.page = (self.page + step) % len(self.memory_pages(memory)[0])
 
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
@@ -30,12 +46,18 @@ class FragmentsScreen:
             moves = {pygame.K_LEFT: -1, pygame.K_RIGHT: 1, pygame.K_UP: -4, pygame.K_DOWN: 4}
             if event.key in moves:
                 self.selected = (self.selected + moves[event.key]) % TOTAL_FRAGMENTS
+                self.page = 0
+            if event.key in (pygame.K_PAGEDOWN, pygame.K_PAGEUP):
+                self.turn_page(1 if event.key == pygame.K_PAGEDOWN else -1)
+        if event.type == pygame.MOUSEWHEEL:
+            self.turn_page(-event.y)
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.BACK.collidepoint(event.pos):
                 return "back"
             for index, rect in enumerate(self.CARD_RECTS):
                 if rect.collidepoint(event.pos):
                     self.selected = index
+                    self.page = 0
         return None
 
     def update(self):
@@ -98,10 +120,14 @@ class FragmentsScreen:
             paragraph(surface, hint, text, 16, MUTED, italic=True)
         else:
             label(surface, fragment.titulo, (area.centerx, area.y + 10), 30, GOLD_BRIGHT, align="center")
-            paragraph(surface, f"“{memory.text}”", text, 17, TEXT, italic=True)
+            pages, size = self.memory_pages(memory)
+            self.page = min(self.page, len(pages) - 1)
+            paragraph(surface, pages[self.page], text, size, TEXT, italic=True)
             divider(surface, area.x + 26, area.right - 26, text.bottom + 8)
             paragraph(surface, fragment.descricao, pygame.Rect(text.x, text.bottom + 16, text.width, 40), 14, TEXT)
             source = "Texto: ChatGPT (LLM)" if memory.generated else "Texto: roteiro (sem IA)"
+            if len(pages) > 1:
+                source += f" · {self.page + 1}/{len(pages)} · PgUp/PgDn"
             label(surface, source, (area.centerx, text.bottom + 58), 12, GOLD if memory.generated else MUTED,
                   italic=True, align="center")
         button(surface, self.BACK, "Voltar", caps=True, selected=True, size=18)

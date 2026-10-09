@@ -108,7 +108,18 @@ def label(surface, text, position, size=20, color=TEXT, bold=False, italic=False
 def wrap(text, width, size, bold=False, italic=False):
     current_font = font(size, bold, italic)
     lines, current = [], ""
+    words = []
     for word in text.split():
+        # Uma palavra longa também deve caber na caixa (inclusive saída válida do LLM).
+        chunk = ""
+        for char in word:
+            if chunk and current_font.size(chunk + char)[0] > width:
+                words.append(chunk)
+                chunk = ""
+            chunk += char
+        if chunk:
+            words.append(chunk)
+    for word in words:
         candidate = f"{current} {word}".strip()
         if current_font.size(candidate)[0] <= width or not current:
             current = candidate
@@ -220,7 +231,11 @@ def portrait(surface, rect, name, dark=False):
 def fragment_counter(surface, rect, count, total):
     panel(surface, rect, 215)
     surface.blit(scaled("ui/icone_cristal.png", (18, 28)), (rect.x + 16, rect.centery - 14))
-    label(surface, f"Fragmentos: {count}/{total}", (rect.x + 44, rect.centery - 11), 19)
+    text = f"Fragmentos: {count}/{total}"
+    size = 19
+    while size > 11 and font(size).size(text)[0] > rect.width - 58:
+        size -= 1
+    label(surface, text, (rect.x + 44, rect.centery - font(size).get_height() // 2), size)
 
 
 def credits_footer(surface, items, quote=True):
@@ -231,14 +246,18 @@ def credits_footer(surface, items, quote=True):
     pygame.draw.line(surface, (70, 58, 38), FOOTER.topleft, FOOTER.topright)
     if items:
         label(surface, "Assets gerados por IA:", (22, FOOTER.centery - 9), 15, TEXT)
-    x = 190
-    for image, text in items:
+    start, end = 200, (1080 if quote else SIZE[0] - 18)
+    cell_width = (end - start) // max(1, len(items))
+    for index, (image, text) in enumerate(items):
+        x = start + index * cell_width
         thumb = pygame.Rect(x, FOOTER.y + 12, 50, 50)
         portrait(surface, thumb, image)
         lines = text.split("\n")
-        for index, line in enumerate(lines):
-            label(surface, line, (thumb.right + 10, FOOTER.centery - 9 * len(lines) + index * 18), 14, MUTED)
-        x = thumb.right + 20 + max(font(14).size(line)[0] for line in lines) + 30
+        size = 14
+        while size > 10 and any(font(size).size(line)[0] > cell_width - 72 for line in lines):
+            size -= 1
+        for row, line in enumerate(lines):
+            label(surface, line, (thumb.right + 10, FOOTER.centery - 9 * len(lines) + row * 18), size, MUTED)
     if quote:
         label(surface, "“ALGUMAS MEMÓRIAS", (1180, FOOTER.y + 16), 14, MUTED, align="center")
         label(surface, "NUNCA MORREM.”", (1180, FOOTER.y + 34), 14, MUTED, align="center")

@@ -73,6 +73,8 @@ def parse_turn(raw: str, first_option_id: int) -> DialogueResult:
         choices.append(choice_from_intent(first_option_id + index, label, option["intencao"]))
     if len({c.label.casefold() for c in choices}) != OPTION_COUNT:
         raise ValueError("Opções repetidas.")
+    if len({c.intent for c in choices}) != OPTION_COUNT:
+        raise ValueError("Intenções repetidas.")
     return DialogueResult(text=text, options=tuple(choices))
 
 

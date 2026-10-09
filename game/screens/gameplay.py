@@ -6,7 +6,7 @@ import pygame
 
 from game.screens.ui import (ENERGY, GOLD, GOLD_BRIGHT, LIFE, MUTED, NAME_COLORS, RED, TEXT, background, bar,
                              button, credits_footer, diamond, divider, fragment_counter, frame, label, panel,
-                             paragraph, portrait, sprite, fade_in)
+                             paragraph, portrait, sprite, fade_in, wrap, font)
 from game.systems.ending import DECISIONS
 from game.systems.fragments import TOTAL_FRAGMENTS
 from game.systems.journey import HOTSPOTS, Journey, get_hotspot
@@ -121,7 +121,7 @@ class GameplayScreen:
                     journey.interact(nearest.id)
                     self._after_phase_change()
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.DIALOGUE.collidepoint(event.pos):
+            if self.dialogue_box().collidepoint(event.pos):
                 self._text_start = 0.0
             if self.failed and self.RETRY.collidepoint(event.pos):
                 self.retry()
@@ -129,7 +129,7 @@ class GameplayScreen:
             for index, rect in enumerate(self.button_rects()):
                 if rect.collidepoint(event.pos):
                     return self.activate(index)
-            if journey.phase == "exploracao" and event.pos[1] < self.DIALOGUE.top:
+            if journey.phase == "exploracao" and event.pos[1] < self.dialogue_box().top:
                 target = next((h for h in self.placed() if self.hotspot_rect(h).collidepoint(event.pos)), None)
                 self.walk_to(target.x if target else event.pos[0], target.id if target else None)
         return None
@@ -151,6 +151,7 @@ class GameplayScreen:
             hotspot = get_hotspot(EXPLORE_BUTTONS[index][0])
             if hotspot.x is None:
                 journey.interact(hotspot.id)  # o medalhão está com Kael: não precisa andar
+                journey.persist()
             else:
                 self.walk_to(hotspot.x, hotspot.id)
         elif journey.phase == "decisao":
@@ -339,22 +340,33 @@ class GameplayScreen:
 
     def _draw_dialogue(self, surface):
         journey, encounter = self.journey, self.encounter
-        box = self.DIALOGUE
+        box = self.dialogue_box()
         surface.blit(frame("ui/caixa_dialogo_base.png", box.size), box)
         name, image, tag, tag_color = self._speaker()
         portrait(surface, pygame.Rect(box.x + 28, box.y + 17, 84, 82), image)
         x = box.x + 130
-        label(surface, name, (x, box.y + 16), 22, NAME_COLORS.get(name, GOLD_BRIGHT))
+        name_size = 22
+        name_width = box.right - 40 - x - (font(13, italic=True).size(tag)[0] + 14 if tag else 0)
+        while name_size > 13 and font(name_size).size(name)[0] > name_width:
+            name_size -= 1
+        label(surface, name, (x, box.y + 16), name_size, NAME_COLORS.get(name, GOLD_BRIGHT))
         if tag:
             label(surface, tag, (box.right - 40, box.y + 22), 13, tag_color, italic=True, align="right")
         if encounter and encounter.choice:
             # O que Kael acabou de dizer, logo acima da caixa.
             label(surface, f"Kael: “{encounter.choice.label}”", (box.x + 24, box.y - 24), 16, GOLD_BRIGHT,
                   italic=True, shadow=True)
-        paragraph(surface, self._typed(self.dialogue_text), pygame.Rect(x, box.y + 46, box.width - 175, 54), 20, TEXT)
+        paragraph(surface, self._typed(self.dialogue_text),
+                  pygame.Rect(x, box.y + 46, box.width - 175, box.height - 62), 20, TEXT)
         hint = ("←/→ andar · E investigar · 1–5 ir até · F fragmentos · TAB perfil · Esc menu"
                 if journey.phase == "exploracao" else "1–4 escolher · F fragmentos · TAB perfil · Esc menu")
         label(surface, hint, (self.WIDE.centerx, 626), 12, (170, 162, 146), align="center", shadow=True)
+
+    def dialogue_box(self):
+        # Mantém a base do mockup e cresce para cima quando o texto completo precisa de mais espaço.
+        lines = wrap(self.dialogue_text, self.DIALOGUE.width - 175, 13)
+        height = max(self.DIALOGUE.height, 62 + len(lines) * 18)
+        return pygame.Rect(self.DIALOGUE.x, self.DIALOGUE.bottom - height, self.DIALOGUE.width, height)
 
     def _typed(self, text):
         """Efeito de digitação (desligável em Configurações); clique ou Espaço completa o texto."""

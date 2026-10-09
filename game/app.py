@@ -75,6 +75,7 @@ class GameApp:
 
     def handle_event(self, event):
         if event.type == pygame.QUIT:
+            self._persist_gameplay()
             self.running = False
             return
         if event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEMOTION):
@@ -91,11 +92,13 @@ class GameApp:
         if action == "new_game":
             save.delete(save.PROGRESS)
             self.screen = GameplayScreen(self.service, self.offline, animate_text=self.settings["texto_animado"])
+            self._persist_gameplay()
         elif action == "continue":
             journey = load_progress(self.service, self.offline)
             self.screen = (GameplayScreen(self.service, self.offline, journey, self.settings["texto_animado"])
                            if journey else self.menu())
         elif action == "menu":
+            self._persist_gameplay()
             self.screen = self.menu()
         elif action == "fragments":
             self.return_screen = self.screen
@@ -116,7 +119,12 @@ class GameApp:
         elif action == "ending":
             self.screen = EndingScreen(self.screen.journey)
         elif action == "quit":
+            self._persist_gameplay()
             self.running = False
+
+    def _persist_gameplay(self):
+        if isinstance(self.screen, GameplayScreen):
+            self.screen.journey.persist()
 
     def draw(self):
         self.screen.draw(self.canvas)
