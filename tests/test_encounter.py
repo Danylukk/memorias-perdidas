@@ -19,14 +19,14 @@ def test_choice_updated_before_thread_and_duplicates_blocked():
     entered, release = Event(), Event()
     received = []
 
-    def respond(state, choice):
+    def respond(state, choice, *args):
         received.append((state, choice))
         entered.set()
         assert release.wait(3)
         return DialogueResult(text="Ainda respiro.")
 
     service = MagicMock()
-    service.respond.side_effect = respond
+    service.converse.side_effect = respond
     encounter = Encounter(service)
     try:
         assert encounter.choose(3)
@@ -45,12 +45,12 @@ def test_choice_updated_before_thread_and_duplicates_blocked():
     assert encounter.result.ok
     assert not encounter.choose(1)
     assert not encounter.retry()
-    assert service.respond.call_count == 1
+    assert service.converse.call_count == 1
 
 
 def test_retry_preserves_effects_and_new_game_resets():
     service = MagicMock()
-    service.respond.side_effect = [DialogueResult(error=ERROR_MESSAGE), DialogueResult(text="Fique.")]
+    service.converse.side_effect = [DialogueResult(error=ERROR_MESSAGE), DialogueResult(text="Fique.")]
     encounter = Encounter(service)
     encounter.choose(3)
     await_result(encounter)
@@ -60,19 +60,20 @@ def test_retry_preserves_effects_and_new_game_resets():
     await_result(encounter)
     assert encounter.result.ok
     assert encounter.state == state
-    assert service.respond.call_count == 2
-    assert service.respond.call_args_list[0] == service.respond.call_args_list[1]
+    assert service.converse.call_count == 2
+    assert service.converse.call_args_list[0] == service.converse.call_args_list[1]
     assert Encounter(service).state == new_game()
 
 
 def test_unexpected_worker_failure_unlocks():
     service = MagicMock()
-    service.respond.side_effect = RuntimeError("não expor")
+    service.converse.side_effect = RuntimeError("não expor")
     encounter = Encounter(service)
     encounter.choose(4)
     await_result(encounter)
     assert encounter.result.error == ERROR_MESSAGE
-    assert encounter.result.text == ""
+    assert encounter.result.source == "roteiro"  # a história segue pelo roteiro offline
+    assert len(encounter.current_choices) == 4
     assert encounter.state.player.egoismo == 2
 
 

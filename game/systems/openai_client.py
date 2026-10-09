@@ -22,12 +22,17 @@ class OpenAIClient:
                 timeout=self.settings.timeout,
                 max_retries=0,
             ) as client:
+                options = {}
+                if prompt.schema is not None:
+                    options["text"] = {"format": {"type": "json_schema", "name": "turno_darian",
+                                                  "schema": prompt.schema, "strict": True}}
                 response = client.responses.create(
                     model=self.settings.model,
                     instructions=prompt.instructions,
                     input=prompt.context,
-                    max_output_tokens=512,
+                    max_output_tokens=prompt.max_output_tokens,
                     store=False,
+                    **options,
                 )
             if response.status != "completed":
                 raise AIClientError("A geração não foi concluída.")

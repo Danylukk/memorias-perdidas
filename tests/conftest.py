@@ -9,6 +9,12 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 
 
 @pytest.fixture(autouse=True)
+def isolated_saves(monkeypatch, tmp_path):
+    """Progresso, galeria e configurações dos testes nunca tocam a pasta save/ real."""
+    monkeypatch.setattr("game.systems.save.SAVE_DIR", tmp_path / "save")
+
+
+@pytest.fixture(autouse=True)
 def block_network(monkeypatch):
     """Até um teste mal configurado deve falhar antes de acessar a rede."""
     def blocked(*args, **kwargs):

@@ -7,8 +7,8 @@ RPG narrativo dark fantasy: enquanto Kael descobre quem era, o jogador decide qu
 
 Python 3.11+ com suporte às dependências. Ambiente validado: **Python 3.12.14 / Windows**.
 Pygame 2.6.1, SDK oficial OpenAI, python-dotenv e pytest estão em `requirements.txt`.
-Para reproduzir este ambiente, prefira Python 3.12; o Python global desta máquina é 3.14,
-mas o `.venv` preparado para o projeto usa 3.12.
+Para reproduzir o projeto, prefira Python 3.12. A revisão de 09/10/2026 também foi executada
+em Linux com Python 3.12.14; o ambiente virtual deve ser criado após obter o código.
 
 Em um terminal PowerShell na pasta do projeto, para preparar um ambiente novo
 (o comando `python` deve apontar para a versão escolhida):
@@ -19,7 +19,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-O `.venv` desta entrega já está instalado. Basta ativá-lo. Também é possível executar
+Após instalar as dependências, ative o ambiente virtual. Também é possível executar
 diretamente `.\.venv\Scripts\python.exe`, sem depender da ativação.
 
 ## Configuração da API
@@ -37,7 +37,7 @@ local foi fornecida pelo responsável pelo projeto. Reinicie o jogo após config
 
 Variáveis já definidas no ambiente têm precedência sobre o `.env`.
 Não publique o `.env`: ele e suas variantes estão no `.gitignore`; `.env.example` é permitido.
-Não há modelo local nem resposta narrativa de emergência simulando uma geração real.
+Sem chave e modelo configurados, o jogo roda inteiro no **roteiro offline** (ver abaixo), sem acessar a rede.
 
 ## Executar
 
@@ -53,58 +53,134 @@ Sem ativação:
 .\.venv\Scripts\python.exe main.py
 ```
 
-O menu tem **Novo Jogo** e **Sair**. Enter inicia; Esc sai do menu ou volta a ele durante
-o gameplay quando não há geração pendente. O botão de fechar a janela funciona durante a geração.
-A janela pode ser redimensionada; o conteúdo mantém sua proporção.
+## Fluxo do jogo (fiel à CP4)
 
-## Fluxo demonstrável
+As três telas seguem os mockups da CP4 (16:9): **Menu Principal** (Figura 4), **Gameplay** (Figura 5)
+e **Fragmentos de Memória** (Figura 6). Todos os rodapés identificam os assets gerados por IA.
 
-1. Novo Jogo abre as ruínas com Kael e Darian. A frase inicial roteirizada é **“Você... está vivo?”**.
-2. Escolha com o mouse ou teclas 1–4. O Python aplica os efeitos imediatamente.
-3. As opções ficam bloqueadas e aparece **“Darian está pensando...”**. A rede roda em uma thread separada.
-4. A resposta validada aparece como **“Resposta narrativa — ChatGPT (LLM)”**.
-5. O encontro do MVP termina. Volte ao menu e inicie outro jogo para explorar outra escolha.
+**Menu:** NOVO JOGO, CONTINUAR, FRAGMENTOS, CONFIGURAÇÕES e SAIR (mouse, ↑/↓ + Enter; Esc sai).
+CONTINUAR retoma a última partida salva; FRAGMENTOS mostra todas as memórias já recuperadas. Textos longos são paginados com
+PgUp/PgDn ou a roda do mouse, com a página indicada no detalhe.
 
-| Escolha | Efeito em Kael | Confiança de Darian |
+A jornada segue a premissa e o objetivo da CP4 (§1.3 e §1.7):
+
+1. **Despertar — Darian (5 turnos).** Kael acorda nas ruínas; Darian pergunta **“Você... está vivo?”**
+   com as 4 escolhas do mockup (Quem é você? / Você me conhece? / Ajudar o soldado / Ir embora).
+   A cada escolha, o LLM gera a **fala de Darian** e **4 novas respostas curtas para Kael**, na mesma chamada.
+2. **Exploração das ruínas.** Kael caminha pelo cenário (←/→ ou clique) e investiga locais e objetos
+   (E ou botões 1–5): o **estandarte rasgado** desperta *A Ordem de Arkan*; as **espadas cravadas**
+   despertam *A Batalha*; o **soldado caído** e o **medalhão** de Kael alteram seu perfil. O texto de
+   cada lembrança é escrito pelo LLM.
+3. **Lira (3 turnos).** A curandeira que conhece Kael e evita revelar tudo o que sabe. Ela **sabe como Kael
+   tratou Darian** (caminho predominante da conversa: ajudou, interrogou, ameaçou ou abandonou): isso muda
+   a fala de abertura dela, a confiança inicial (±10) e entra no contexto enviado ao LLM
+   (`historia_da_partida`).
+4. **Decisão final:** Confiar em Darian, em Lira, nos dois ou seguir sozinho.
+5. **Desfecho:** quem Kael se tornou (atributo dominante), o destino conforme a confiança conquistada e
+   os fragmentos recuperados.
+
+Durante a conversa, as opções ficam bloqueadas e aparece **“Darian está pensando...”** (thread separada).
+Cenas e telas trocam com um fade. Os efeitos de cada escolha aparecem acima de Kael; **TAB** abre o perfil completo; **F** abre os Fragmentos;
+**Esc** volta ao menu (o estado narrativo é salvo; a posição exata na exploração não é persistida). O botão de fechar a janela funciona durante a geração.
+
+### Regras (sempre em Python)
+
+A IA escreve o texto, mas nunca define números. Cada opção gerada vem marcada com uma **intenção**
+de uma lista fixa, validada por JSON Schema; o Python converte a intenção em efeitos:
+
+| Intenção | Efeitos |
+| --- | --- |
+| curiosidade | Curiosidade +1 |
+| empatia | Empatia +1, Energia −5, Confiança +5 |
+| lealdade | Lealdade +1, Confiança +5 |
+| agressividade | Agressividade +1, Vida −5, Confiança −10 |
+| egoismo | Egoísmo +1, Confiança −5 |
+
+Escolhas fixas: Quem é você? (Curiosidade +1), Você me conhece? (Curiosidade +2), Ajudar o soldado
+(Empatia +2, Lealdade +1, Confiança +10), Ir embora (Egoísmo +2, Confiança −10) e, da tabela da CP4 §1.6,
+Perguntar sobre o passado (Curiosidade +2) e Ameaçar Darian (Agressividade +2, Empatia −1, Vida −10,
+Confiança −15). Investigar um objeto que desperta memória custa Energia −5; o soldado caído dá
+Empatia +1 e o medalhão, Curiosidade +1 (uma vez cada). Valores entre 0 e 100.
+Confiança inicial: Darian 20; Lira 30, ajustada pelo tratamento dado a Darian
+(ajudou +10, interrogou 0, ameaçou −5, abandonou −10).
+
+| Fragmento (mockup) | Origem | Como desbloquear |
 | --- | --- | --- |
-| Quem é você? | Curiosidade +1 | permanece 20 |
-| Você me conhece? | Curiosidade +2 | permanece 20 |
-| Ajudar o soldado | Empatia +2, Lealdade +1 | 20 → 30 |
-| Ir embora | Egoísmo +2 | 20 → 10 |
+| A Batalha | local | Examinar as espadas cravadas |
+| A Ordem de Arkan | objeto | Investigar o estandarte rasgado |
+| Lira | personagem | Confiança de Lira ≥ 45 |
+| Darian | personagem | Confiança de Darian ≥ 40 |
 
-Se a geração falhar, a caixa exibe explicitamente uma falha, sem fala inventada.
-Os efeitos da escolha permanecem. **Tentar novamente / R** faz uma nova solicitação explícita
-para a mesma ação e o mesmo estado, sem reaplicar efeitos. Não há tentativas automáticas.
+Os outros 8 espaços da tela (12 no total, como no mockup) aparecem bloqueados.
+
+**Desfecho:** o atributo mais alto define o título (Protetor, Companheiro, Buscador, Implacável ou
+Sobrevivente; empate segue essa ordem). Confiar em Darian exige confiança ≥ 30; em Lira, ≥ 40;
+nos dois, ambas — caso contrário o desfecho mostra a recusa ou a desconfiança.
+
+### Roteiro offline e falhas da IA
+
+`data/roteiro_offline.json` contém uma conversa **ramificada** para Darian e Lira, escrita com o Claude Code
+e editável pelo grupo. Cada escolha leva a um **caminho** conforme a intenção: empatia/lealdade → **Cuidado**,
+curiosidade → **Perguntas**, agressividade → **Confronto**, egoísmo → **Abandono**.
+
+- **Sem chave/modelo no `.env`** (ou com a IA desligada em Configurações): o menu mostra “Diálogos: roteiro
+  offline” e a partida inteira segue o roteiro, identificado na caixa de diálogo. Nenhuma chamada de rede.
+- **Com a API configurada:** se uma geração falhar (sem internet, timeout, resposta inválida), aquele turno
+  segue pelo roteiro com o aviso “IA indisponível — roteiro offline”; **Tentar IA [R]** faz nova solicitação
+  sem reaplicar efeitos. Não há tentativas automáticas.
+- Lembranças sem IA usam o texto do roteiro — para *A Batalha*, o texto gerado com ChatGPT na CP4 (§2.2.2).
+
+### Configurações e save
+
+CONFIGURAÇÕES liga/desliga os diálogos com IA, a tela cheia e o texto animado. Progresso, galeria de
+fragmentos e configurações ficam em `save/` (JSON local, fora do Git). Ao terminar a jornada, o
+progresso é apagado, mas as memórias continuam na galeria.
+
+## Assets
+
+Todos os visuais são os aprovados na CP4 (gerados com ChatGPT — geração de imagens):
+
+- `assets/characters/`: Kael, Darian e **Lira** (extraída em resolução original do PDF da CP4, Figura 2).
+- `assets/backgrounds/`: cenário das ruínas; `assets/ui/`: logo, botão, caixa de diálogo e cristal.
+- `assets/fragments/`: artes dos fragmentos e dos espaços bloqueados, recortadas do mockup da Figura 6.
+- `assets/portraits/`: retratos recortados dos sprites oficiais, para o HUD e a caixa de diálogo.
+
+Nenhuma imagem nova foi gerada; os textos da interface são renderizados pelo jogo (CP4 §6.3).
 
 ## Arquitetura
 
 ```text
-GameplayScreen → Encounter → choices.apply_choice (estado atualizado)
-                         ↓ thread + fila de resultados
-                  DialogueService
-                         ↓
-                    PromptBuilder
-                         ↓
-                    OpenAIClient → Responses API da OpenAI
-                         ↓
-                validação → fila → GameplayScreen
+GameplayScreen → Journey (fases: darian → exploração → lira → decisão → fim)
+                    ↓
+                 Encounter → choices.apply_effects (estado atualizado pelo Python)
+                    ↓ thread + fila de resultados
+                 DialogueService ── PromptBuilder ── OpenAIClient → Responses API (JSON Schema)
+                    ↓ falha ou modo offline
+                 script.py (roteiro ramificado)
+                    ↓
+                 validação → fila → GameplayScreen → save/ (JSON)
 ```
 
-- `game/models/`: estado imutável de Kael e Darian. JSONs de `data/` são dados iniciais, não saves.
-- `game/systems/choices.py`: quatro escolhas e seus efeitos, sem Pygame.
-- `game/systems/prompt_builder.py`: regras fixas e contexto JSON com os atributos já atualizados.
-- `game/systems/openai_client.py`: único local que usa o SDK. Timeout de 25 segundos,
-  `max_retries=0`, limite de 512 tokens de saída e `store=False`. Apenas `output_text` sai do adaptador.
-- `game/systems/dialogue.py`: coordenação, normalização e rejeição de respostas vazias,
-  maiores que 360 caracteres, com mais de duas frases ou formatos/metalinguagem obviamente inválidos.
-- `game/systems/encounter.py`: aplica uma escolha por encontro, impede duplicação e coordena a thread.
-  Somente o loop principal atualiza o estado e desenha; o worker devolve um resultado pela fila.
-- `game/app.py`: conecta o provedor ao serviço. As telas não conhecem a OpenAI.
+- `game/models/`: estado imutável de Kael e dos NPCs. JSONs de `data/` são dados iniciais, não saves.
+- `game/systems/journey.py`: fases da partida, exploração (pontos de interesse), decisão e save.
+- `game/systems/encounter.py`: conversa em turnos com um NPC; decide os fragmentos desbloqueados
+  e coordena a thread. Somente o loop principal atualiza o estado e desenha.
+- `game/systems/choices.py`: escolhas fixas, tabela intenção → efeitos e serialização.
+- `game/systems/script.py` + `data/roteiro_offline.json`: roteiro ramificado por personagem e caminho.
+- `game/systems/fragments.py`: os 4 fragmentos do mockup, condições e textos de reserva.
+- `game/systems/ending.py`: perfil de Kael e desfecho da decisão.
+- `game/systems/prompt_builder.py`: regras fixas por personagem e contexto JSON com o estado atualizado.
+- `game/systems/openai_client.py`: único local que usa o SDK. Timeout de 25 s, `max_retries=0`,
+  `store=False`, Structured Outputs nos turnos. Apenas `output_text` sai do adaptador.
+- `game/systems/dialogue.py`: `converse` valida o JSON do turno (fala + 4 opções de até 36 caracteres,
+  sem repetição); rejeita respostas vazias, longas, com mais frases que o permitido ou com metalinguagem.
+- `game/systems/save.py`: progresso, galeria e configurações em JSON.
+- `game/screens/`: menu, gameplay, fragmentos, configurações e desfecho. As telas não conhecem a OpenAI.
 
-O conhecimento privado do NPC não é serializado integralmente. O prompt recebe apenas fatos
-conhecidos **e explicitamente permitidos**, a política de revelação e temas proibidos.
-Os temas de segredo não contêm fatos inéditos da história. `pode_revelar_passado` permanece `false`.
-Nenhuma saída da IA é executada, convertida em atributos ou utilizada para liberar progressão.
+O conhecimento privado dos NPCs não é serializado integralmente. O prompt recebe apenas fatos
+conhecidos **e explicitamente permitidos**, a política de revelação e os temas proibidos.
+`pode_revelar_passado` permanece `false` para Darian e Lira. Nenhuma saída da IA é executada,
+convertida em atributos ou utilizada para liberar progressão.
 
 As verificações textuais são guardrails simples: **não provam ausência de alucinações semânticas**.
 Mesmo uma fala inadequada não altera o estado do jogo. A revisão narrativa com a API real continua necessária.
@@ -117,18 +193,17 @@ e [SDK Python — retries e timeouts](https://developers.openai.com/api/referenc
 Com o ambiente ativado, execute nesta ordem:
 
 ```powershell
-python -m compileall .
+python -m compileall -q game tests main.py
 pytest -q
 ```
 
-O primeiro comando também visita o `.venv` quando ele fica dentro do projeto.
 A suíte usa mocks e bloqueia conexões de rede por uma fixture automática. Nenhuma chamada real é feita
 por `pytest -q`. Os testes de interface usam o driver SDL `dummy`, sem abrir janela.
 
 Para testar somente regras, modelos e prompt, sem inicializar o Pygame:
 
 ```powershell
-pytest -q tests/test_state.py tests/test_choices.py tests/test_prompt_builder.py
+pytest -q tests/test_state.py tests/test_choices.py tests/test_prompt_builder.py tests/test_cp5_mechanics.py tests/test_encounter.py
 ```
 
 ## Validação manual real
@@ -136,23 +211,26 @@ pytest -q tests/test_state.py tests/test_choices.py tests/test_prompt_builder.py
 Depois de configurar a credencial e o modelo, execute o jogo e escolha **Ajudar o soldado**.
 Observe Empatia **2**, Lealdade **1**, Confiança **30**, a mensagem de espera e, finalmente,
 a fala gerada. Fechar a janela deve continuar possível durante a espera.
-Uma escolha faz no máximo uma requisição; uma nova tentativa explícita pode gerar uma nova cobrança.
+Cada escolha faz uma requisição (fala + opções) e, se desbloquear um fragmento, mais uma por fragmento.
+Uma partida completa faz de 8 a 12 requisições; uma nova tentativa explícita pode gerar nova cobrança.
 
-Uma chamada real com **gpt-5.6-luna**, usando **Ajudar o soldado**, retornou HTTP 200.
+Na primeira versão do MVP, uma chamada real com **gpt-5.6-luna**, usando **Ajudar o soldado**, retornou HTTP 200.
 Foi corrigida a contagem de frases quando a fala vem entre aspas externas; a mesma resposta
 recebida foi validada e exibida na janela nativa, sem nova solicitação. O estado permaneceu
 Empatia 2, Lealdade 1, Confiança 30. Evidências e limites estão no relatório.
 
 ## Limites desta entrega
 
-Os assets oficiais do pacote `memorias_perdidas_pacote_completo/` foram integrados:
-Kael, Darian, cenário das ruínas, logo, base de botão e caixa de diálogo. As cópias em
-`assets/characters/`, `assets/backgrounds/` e `assets/ui/` preservam os PNGs originais.
-Personagens, logo e cenário usam escala proporcional, sem recorte; as faixas de preenchimento
-mantêm a imagem inteira. As molduras da UI adaptam as faixas de textura conservando os ornamentos.
-O menu foi montado com os elementos separados: o menu pronto do pacote inclui opções fora do MVP.
-Nenhuma imagem nova foi gerada. Os assets oficiais foram produzidos previamente com ChatGPT.
+A jornada cobre um capítulo: Darian, exploração das ruínas, Lira e a decisão final. Dos 12 fragmentos,
+os 4 do mockup podem ser recuperados; os demais aparecem bloqueados. A exploração é lateral, em uma
+única cena. Não há combate. As mudanças em relação à CP4 estão justificadas em `ENTREGA_CP5.md`,
+junto com o Diário de Vibe Coding e o checklist de testes. O histórico da primeira entrega do MVP
+está em `RELATORIO_MVP.md`.
 
-Só há o primeiro encontro. Não há persistência, combate, novos NPCs ou desbloqueio de fragmentos.
-O indicador 0/12 representa o conceito; os 12 fragmentos não foram implementados.
-O relatório da entrega está em `RELATORIO_MVP.md`.
+## Revisão de entrega — 09/10/2026
+
+A revisão sobre `paiva` passou em **94 testes**, incluindo 13 regressões de persistência,
+leitura dos textos, limites do HUD e créditos. A execução e inspeção visual usaram SDL
+`dummy`; não substituem a execução manual dos integrantes no computador de apresentação.
+Nenhuma chamada real à API foi realizada nesta revisão. Veja `VALIDACAO_CP5_2026-10-09.md`
+para as evidências, a comparação de branches e as pendências de vídeo e autoria do grupo.
