@@ -3,6 +3,20 @@
 MVP acadêmico de **Processamento de Linguagem Natural, Chatbots e Agentes Virtuais — FIAP**.
 RPG narrativo dark fantasy: enquanto Kael descobre quem era, o jogador decide quem ele será.
 
+## Entrega da CP5
+
+- **Repositório público / versão de entrega:** [branch main](https://github.com/Danylukk/memorias-perdidas/tree/main).
+- **Vídeo de demonstração:** [Memórias Perdidas — MVP CP5](https://youtu.be/nB9UEZMc7IU).
+- **Diário de Vibe Coding, mudanças e checklist:** [ENTREGA_CP5.md](ENTREGA_CP5.md).
+- **Relatório de validação técnica e limites:** [VALIDACAO_CP5_2026-10-09.md](VALIDACAO_CP5_2026-10-09.md).
+- **Evidências visuais da revisão:** [painel de telas](docs/evidencias/painel_validacao.jpg).
+- **Histórico da primeira versão:** [RELATORIO_MVP.md](RELATORIO_MVP.md).
+
+Código, assets, dados e testes estão nesta branch. A instalação e a execução estão descritas abaixo.
+Os campos **[GRUPO]** de `ENTREGA_CP5.md` ainda devem ser preenchidos pelos integrantes com sua
+explicação própria do código, revisão e resultados de testes manuais. O link do vídeo foi fornecido
+pelo integrante; sua duração e conteúdo não foram verificados pela revisão automatizada.
+
 ## Requisitos e instalação
 
 Python 3.11+ com suporte às dependências. Ambiente validado: **Python 3.12.14 / Windows**.
