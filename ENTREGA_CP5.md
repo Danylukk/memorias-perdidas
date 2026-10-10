@@ -159,6 +159,10 @@ Sem mudança: título, gênero, premissa, plataforma (PC), tecnologia (Python + 
 
 ## 5. Roteiro sugerido para o vídeo (2 a 5 min)
 
+**Vídeo de demonstração:** [Memórias Perdidas — MVP CP5](https://youtu.be/nB9UEZMc7IU)
+
+Link informado por Thiago em 09/10/2026. A duração, a disponibilidade pública e o conteúdo do vídeo ainda não foram verificados nesta revisão.
+
 1. (20 s) Menu: mostrar que é igual ao mockup da CP4 e o rodapé “Assets gerados por IA”.
 2. (70 s) Darian: “Ajudar o soldado” e mais alguns turnos. Mostrar a espera, a fala com o rótulo ChatGPT (LLM), as opções geradas mudando conforme a fala e os efeitos aparecendo acima de Kael.
 3. (40 s) Exploração: caminhar até o estandarte e as espadas e mostrar a lembrança escrita pelo LLM.
