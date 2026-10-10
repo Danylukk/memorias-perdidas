@@ -6,6 +6,10 @@
 Como executar, dependências e configuração da API: ver `README.md`.
 Histórico técnico da primeira versão do MVP: ver `RELATORIO_MVP.md`.
 
+**Repositório público (main):** https://github.com/Danylukk/memorias-perdidas
+**Relatório de validação:** [VALIDACAO_CP5_2026-10-09.md](VALIDACAO_CP5_2026-10-09.md).
+**Evidências visuais:** [painel de telas](docs/evidencias/painel_validacao.jpg).
+
 > Campos marcados com **[GRUPO]** devem ser preenchidos pelos integrantes antes da entrega.
 
 ---
