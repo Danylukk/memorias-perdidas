@@ -2,7 +2,7 @@
 
 Data: 09/10/2026. Integrantes da CP4 confirmados: Rafael de Paiva Ramos — RM 563978 e Thiago Santana Danyluk — RM 562286.
 
-**Conclusão:** versão Paiva validada tecnicamente em modo offline e com cliente de IA simulado nos testes. A jornada chega ao desfecho. Os assets gerados por IA da CP4 estão integrados ao jogo. A entrega acadêmica ainda exige vídeo, explicação própria dos integrantes e checklist manual. Nenhuma chamada real à API foi feita nesta revisão.
+**Conclusão:** versão Paiva validada tecnicamente em modo offline e com cliente de IA simulado nos testes. A jornada chega ao desfecho. Os assets gerados por IA da CP4 estão integrados ao jogo. O link do vídeo foi informado pelo integrante e registrado no repositório; sua duração e seu conteúdo não foram verificados. A entrega acadêmica ainda exige a explicação própria dos integrantes e o preenchimento do checklist manual. Nenhuma chamada real à API foi feita nesta revisão.
 
 ## 1. Fontes conferidas
 
@@ -24,7 +24,7 @@ O texto completo dos cartões de Assignments e o horário-limite da tarefa não 
 | Começo, meio e fim | Darian → exploração → Lira → decisão → desfecho; percursos completos testados |
 | Uma modalidade de IA generativa integrada | Imagens pré-geradas aprovadas na CP4 aparecem no jogo. O próprio enunciado aceita asset pré-gerado integrado. A chamada atual de texto não foi verificada com credencial real |
 | Código completo e README | Presentes; instruções de instalação corrigidas para um checkout novo |
-| Vídeo de 2 a 5 minutos | **Pendente:** nenhum arquivo ou link de vídeo encontrado no repositório |
+| Vídeo de 2 a 5 minutos | [Link informado por Thiago](https://youtu.be/nB9UEZMc7IU), registrado em `ENTREGA_CP5.md`; duração, conteúdo e acesso ao vídeo ainda não verificados |
 | Diário com pelo menos 5 prompts reais e ajustes | Nove prompts anteriores documentados; esta revisão acrescenta o prompt real 10. O grupo deve conferir o histórico e completar os campos de revisão |
 | Explicação do código escrita pelo grupo, sem IA | **Pendente**, conforme exigência explícita da Etapa 3. Os tópicos existentes são orientação, não a explicação autoral |
 | Diário de mudanças, com justificativas reais | Presente em ENTREGA_CP5.md, incluindo redução de escopo e mudança para API. O grupo deve confirmar as justificativas históricas |
@@ -108,3 +108,10 @@ Ambiente: Linux, Python 3.12.14, Pygame 2.6.1, OpenAI SDK 2.54.0. Dependências 
 6. Incluir o vídeo ou seu link acessível junto ao código, README e diários. Não incluir .env, chaves, .venv ou saves pessoais no ZIP.
 
 Os extras existentes (quatro mecânicas, testes, transições, save e fallback) podem apoiar o ponto adicional, mas a nota depende da avaliação do professor e da evidência apresentada; não há promessa de nota.
+
+## 8. Consolidação da entrega em 09/10/2026
+
+- Visibilidade do repositório confirmada como **pública** pela API do GitHub; branch de entrega: `main`.
+- O README centraliza os links do vídeo, diários, checklist, relatório técnico e evidências visuais.
+- Vídeo informado pelo integrante: https://youtu.be/nB9UEZMc7IU. A tentativa de abrir o YouTube foi bloqueada pelo acesso disponível; não há declaração de avaliação audiovisual.
+- Os campos [GRUPO] foram preservados para autoria e resultados reais dos integrantes. A gravação não permite presumir que todos os casos do checklist tenham sido executados.
