@@ -16,7 +16,7 @@ from game.screens.settings import SettingsScreen
 from game.screens.ui import SIZE
 from game.systems import save
 from game.systems.dialogue import DialogueService
-from game.systems.openai_client import OpenAIClient
+from game.systems.api_client import NarrativeAPIClient
 
 
 def reply(prompt, fala="Ainda respiro. Fique comigo."):
@@ -49,7 +49,7 @@ def wait_for_ui(app):
 
 @pytest.fixture
 def app():
-    client = MagicMock(spec=OpenAIClient)
+    client = MagicMock(spec=NarrativeAPIClient)
     client.generate.side_effect = reply
     app = GameApp(DialogueService(client))
     yield app, client
@@ -108,7 +108,7 @@ def test_menu_choice_pending_result_and_reset(app):
 
 def test_missing_key_continues_by_script_and_retry_does_not_reapply(app):
     app, _ = app
-    app.service = DialogueService(OpenAIClient(Settings()))
+    app.service = DialogueService(NarrativeAPIClient(Settings()))
     app.handle_event(click(MenuScreen.NEW_GAME))
     app.handle_event(click(GameplayScreen.CHOICE_RECTS[2]))
     wait_for_ui(app)
@@ -244,8 +244,8 @@ def test_settings_toggle_and_persist(app):
 
 
 def test_offline_mode_without_key_plays_to_the_end(monkeypatch, tmp_path):
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    monkeypatch.delenv("OPENAI_MODEL", raising=False)
+    monkeypatch.delenv("API_KEY", raising=False)
+    monkeypatch.delenv("API_URL", raising=False)
     monkeypatch.setattr("game.config.PROJECT_ROOT", tmp_path)
     app = GameApp()
     try:

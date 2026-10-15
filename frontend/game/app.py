@@ -15,7 +15,7 @@ from game.screens.ui import SIZE, fade_in, font
 from game.systems import save
 from game.systems.dialogue import DialogueService
 from game.systems.journey import load_gallery, load_progress
-from game.systems.openai_client import OpenAIClient
+from game.systems.api_client import NarrativeAPIClient
 
 
 class GameApp:
@@ -30,9 +30,9 @@ class GameApp:
         self.clock = pygame.time.Clock()
         if dialogue_service is None:
             config = Settings.from_env()
-            self.ai_available = bool(config.api_key and config.model)
-            self.model = config.model
-            dialogue_service = DialogueService(OpenAIClient(config))
+            self.ai_available = bool(config.api_key and config.api_url)
+            self.model = "via API do grupo"
+            dialogue_service = DialogueService(NarrativeAPIClient(config))
         else:
             # Serviço injetado (testes): tratado como IA disponível.
             self.ai_available, self.model = True, "injetado"
@@ -45,7 +45,7 @@ class GameApp:
 
     @property
     def offline(self):
-        # Sem chave/modelo, ou com a IA desligada nas Configurações, o jogo roda pelo roteiro offline.
+        # Sem acesso à API, ou com a IA desligada nas Configurações, usa roteiro offline.
         return not (self.ai_available and self.settings["usar_ia"])
 
     @property

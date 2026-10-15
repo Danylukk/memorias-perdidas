@@ -18,7 +18,7 @@ class SettingsScreen:
 
     def rows(self):
         ia = ("Ligados" if self.settings["usar_ia"] else "Desligados (roteiro offline)") if self.ai_available \
-            else "Indisponível — configure OPENAI_API_KEY e OPENAI_MODEL no .env"
+            else "Indisponível - configure o acesso à API do grupo"
         return (("usar_ia", "Diálogos com IA (ChatGPT / LLM)", ia),
                 ("tela_cheia", "Tela cheia", "Sim" if self.settings["tela_cheia"] else "Não"),
                 ("texto_animado", "Texto animado", "Sim" if self.settings["texto_animado"] else "Não"))
@@ -62,7 +62,7 @@ class SettingsScreen:
             label(surface, name, (rect.x + 18, rect.y + 8), 19, TEXT)
             disabled = key == "usar_ia" and not self.ai_available
             label(surface, value, (rect.x + 18, rect.y + 33), 14, MUTED if disabled else GOLD, italic=True)
-        info = f"Modelo configurado: {self.model}" if self.ai_available else "Sem chave da API: o jogo usa o roteiro offline."
+        info = "IA via API do grupo" if self.ai_available else "Sem acesso à API: o jogo usa o roteiro offline."
         label(surface, info, (self.PANEL.centerx, 432), 14, MUTED, italic=True, align="center")
         label(surface, "Clique ou Enter para alternar", (self.PANEL.centerx, 454), 13, MUTED, align="center")
         button(surface, self.BACK, "Voltar", caps=True, selected=True, size=18)

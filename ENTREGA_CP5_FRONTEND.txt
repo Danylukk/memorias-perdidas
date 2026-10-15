@@ -1,0 +1,24 @@
+CP5 - MVP do Jogo - Matéria de FRONTEND
+Jogo: Memórias Perdidas
+
+Integrantes:
+Thiago Santana Danyluk - RM 562286
+Rafael de Paiva Ramos - RM 563978
+
+Repositório:
+https://github.com/Danylukk/memorias-perdidas
+
+Branch:
+feat/cp5-fastapi
+
+Instalação e execução: README.md
+Requisitos e roteiro do vídeo: ENTREGA_FRONTEND.md
+Validação: VALIDACAO_FRONTEND.md
+
+Pygame -> requests -> FastAPI -> provider OpenAI.
+POST /v1/ia-generativa/texto protegido por X-API-Key.
+Swagger em /docs.
+
+Vídeo atualizado de Front-End:
+PENDENTE - inserir o link após gravar a integração com FastAPI.
+O vídeo anterior de PLN não demonstra esta adaptação.

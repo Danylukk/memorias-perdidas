@@ -1,6 +1,11 @@
 # Memórias Perdidas — Entrega CP5 (Vibe Coding e MVP)
 
 **Disciplina:** NLP, Chatbots e Agentes Virtuais — FIAP
+
+> Adaptação de Front-End em 15/10/2026: ver [ENTREGA_FRONTEND.md](ENTREGA_FRONTEND.md).
+> O jogo e seus assets/dados agora estão em frontend/; a chamada OpenAI foi movida para backend/.
+> As descrições e os resultados de 09/10 abaixo são históricos da entrega de PLN.
+> O fluxo atual e os comandos estão no README.
 **Integrantes:** Rafael de Paiva Ramos (RM 563978) · Thiago Santana Danyluk (RM 562286)
 
 Como executar, dependências e configuração da API: ver `README.md`.

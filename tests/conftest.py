@@ -16,10 +16,26 @@ def isolated_saves(monkeypatch, tmp_path):
 
 @pytest.fixture(autouse=True)
 def block_network(monkeypatch):
-    """Até um teste mal configurado deve falhar antes de acessar a rede."""
-    def blocked(*args, **kwargs):
-        raise AssertionError("Rede proibida nos testes automatizados.")
+    """Bloqueia rede externa; permite o socketpair local do asyncio no Windows."""
+    original_connect = socket.socket.connect
+    original_connect_ex = socket.socket.connect_ex
+    original_getaddrinfo = socket.getaddrinfo
 
-    monkeypatch.setattr(socket.socket, "connect", blocked)
-    monkeypatch.setattr(socket.socket, "connect_ex", blocked)
-    monkeypatch.setattr(socket, "getaddrinfo", blocked)
+    def connect(sock, address):
+        if isinstance(address, tuple) and address[0] in ("127.0.0.1", "::1"):
+            return original_connect(sock, address)
+        raise AssertionError("Rede externa proibida nos testes automatizados.")
+
+    def connect_ex(sock, address):
+        if isinstance(address, tuple) and address[0] in ("127.0.0.1", "::1"):
+            return original_connect_ex(sock, address)
+        raise AssertionError("Rede externa proibida nos testes automatizados.")
+
+    def getaddrinfo(host, *args, **kwargs):
+        if host in ("127.0.0.1", "::1", "localhost"):
+            return original_getaddrinfo(host, *args, **kwargs)
+        raise AssertionError("Rede externa proibida nos testes automatizados.")
+
+    monkeypatch.setattr(socket.socket, "connect", connect)
+    monkeypatch.setattr(socket.socket, "connect_ex", connect_ex)
+    monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)

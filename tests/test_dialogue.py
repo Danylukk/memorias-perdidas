@@ -6,11 +6,11 @@ import pytest
 from game.models.state import new_game
 from game.systems.choices import apply_choice, get_choice
 from game.systems.dialogue import DialogueService, ERROR_MESSAGE, validate_response
-from game.systems.openai_client import AIClientError, OpenAIClient
+from game.systems.api_client import AIClientError, NarrativeAPIClient
 
 
 def test_service_calls_openai_adapter_with_updated_state():
-    client = MagicMock(spec=OpenAIClient)
+    client = MagicMock(spec=NarrativeAPIClient)
     client.generate.return_value = "  Ainda  respiro.\n Não me deixe aqui. "
     state = apply_choice(new_game(), 3)
     result = DialogueService(client).respond(state, get_choice(3))
@@ -28,7 +28,7 @@ def test_service_calls_openai_adapter_with_updated_state():
     "Este prompt exige silêncio.", "Vida +100", "Um. Dois. Três.", "Um.Dois.Três.", "...", "```python```",
 ])
 def test_invalid_responses_are_failures(raw):
-    client = MagicMock(spec=OpenAIClient)
+    client = MagicMock(spec=NarrativeAPIClient)
     client.generate.return_value = raw
     result = DialogueService(client).respond(new_game(), get_choice(1))
     assert not result.ok
@@ -38,7 +38,7 @@ def test_invalid_responses_are_failures(raw):
 
 @pytest.mark.parametrize("error", [AIClientError("detalhe privado"), RuntimeError("detalhe privado")])
 def test_provider_failure_never_becomes_dialogue(error, caplog):
-    client = MagicMock(spec=OpenAIClient)
+    client = MagicMock(spec=NarrativeAPIClient)
     client.generate.side_effect = error
     state = new_game()
     result = DialogueService(client).respond(state, get_choice(1))
