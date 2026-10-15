@@ -51,13 +51,19 @@ Essa verificação comprova o transporte HTTP entre jogo e backend, não uma ger
 
 ## Limites e próximos passos da entrega
 
-Não foi feita chamada real à OpenAI nesta adaptação: não foi fornecida uma credencial/modelo
-para esse ambiente novo. Não foram inventados resultados de geração real.
+Em 15/10/2026, após a configuração local pelo responsável pelo projeto, o backend foi reiniciado
+e uma geração real foi enviada pela mesma rota usada pelo jogo:
+
+- POST /v1/ia-generativa/texto: **HTTP 200**, em **7,43 s**.
+- Fala e **4 opções** retornadas e aprovadas pela validação narrativa do jogo.
+- API_KEY do grupo, chave da OpenAI e modelo mantidos somente nos arquivos locais ignorados.
+- Nenhuma credencial foi incluída no repositório.
+- O jogo foi configurado para usar IA. O roteiro offline continua como reserva.
+
+A geração de lembranças foi validada com provider simulado, mas não recebeu uma chamada real adicional nesta sessão.
 
 Antes de entregar:
-1. Preencher backend/.env com chave/modelo e a mesma API_KEY do grupo nos dois projetos.
-2. Validar uma fala e uma lembrança reais conforme ENTREGA_FRONTEND.md.
-3. Gravar e anexar o mini vídeo atualizado. O vídeo antigo de PLN é anterior ao FastAPI.
-4. Completar a explicação autoral e os campos [GRUPO] da documentação de PLN.
+1. Gravar e anexar o mini vídeo atualizado. O vídeo antigo de PLN é anterior ao FastAPI.
+2. Completar a explicação autoral e os campos [GRUPO] da documentação de PLN.
 
 A entrega não foi enviada no Teams. A main não foi alterada por esta implementação.
