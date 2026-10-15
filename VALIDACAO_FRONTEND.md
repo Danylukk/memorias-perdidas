@@ -60,7 +60,16 @@ e uma geração real foi enviada pela mesma rota usada pelo jogo:
 - Nenhuma credencial foi incluída no repositório.
 - O jogo foi configurado para usar IA. O roteiro offline continua como reserva.
 
-A geração de lembranças foi validada com provider simulado, mas não recebeu uma chamada real adicional nesta sessão.
+Uma segunda verificação percorreu a jornada até o final com a IA real:
+
+- 8 turnos de diálogo: 5 com Darian e 3 com Lira.
+- 4 lembranças geradas pela mesma API.
+- 12 chamadas validadas; nenhuma resposta rejeitada nessa rodada.
+- Tempo por chamada entre 1,93 s e 5,95 s.
+- Fase final atingida, sem alterar os saves do usuário.
+
+Uma resposta anterior foi rejeitada pela validação narrativa e acionou o roteiro de reserva.
+As gerações são variáveis; uma rodada aprovada não garante que todas as respostas futuras serão aceitas.
 
 Antes de entregar:
 1. Gravar e anexar o mini vídeo atualizado. O vídeo antigo de PLN é anterior ao FastAPI.
