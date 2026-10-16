@@ -5,6 +5,15 @@ A IA produz falas, opções e lembranças; as regras e a progressão continuam s
 
 **Integrantes:** Thiago Santana Danyluk — RM 562286; Rafael de Paiva Ramos — RM 563978.
 
+## Gravação de Front-End — iniciar por duplo clique
+
+No Windows, após atualizar o repositório, execute **`ABRIR_PARA_GRAVAR.cmd`**. O inicializador prepara o ambiente local, verifica a configuração sem exibir credenciais, abre o servidor FastAPI, o Swagger `/docs` e a tela inicial do jogo. Se o modelo ou a chave da OpenAI não estiverem configurados, solicita apenas essa configuração local.
+
+- **[Roteiro exato do vídeo e checklist](ROTEIRO_GRAVACAO_FRONTEND.md)**
+- **[Inicializador PowerShell](PREPARAR_PARA_GRAVAR.ps1)**
+
+O computador deve estar ligado para concluir a preparação local. **Não mostre `.env` na gravação.**
+
 ## Adaptação para Front-End
 
 O jogo agora usa **requests → FastAPI → provider OpenAI**.
