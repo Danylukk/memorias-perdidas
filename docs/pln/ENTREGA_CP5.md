@@ -2,18 +2,18 @@
 
 **Disciplina:** NLP, Chatbots e Agentes Virtuais — FIAP
 
-> Adaptação de Front-End em 15/10/2026: ver [ENTREGA_FRONTEND.md](ENTREGA_FRONTEND.md).
+> Adaptação de Front-End em 15/10/2026: ver [README do projeto](../../README.md).
 > O jogo e seus assets/dados agora estão em frontend/; a chamada OpenAI foi movida para backend/.
 > As descrições e os resultados de 09/10 abaixo são históricos da entrega de PLN.
 > O fluxo atual e os comandos estão no README.
 **Integrantes:** Rafael de Paiva Ramos (RM 563978) · Thiago Santana Danyluk (RM 562286)
 
-Como executar, dependências e configuração da API: ver `README.md`.
+Como executar, dependências e configuração da API: ver [README principal](../../README.md).
 Histórico técnico da primeira versão do MVP: ver `RELATORIO_MVP.md`.
 
-**Repositório público (main):** https://github.com/Danylukk/memorias-perdidas
+**Repositório público (main):** https://github.com/Danylukk/memorias-perdidas\n**Vídeo específico de Front-End:** https://youtu.be/0yclAM2c9z8
 **Relatório de validação:** [VALIDACAO_CP5_2026-10-09.md](VALIDACAO_CP5_2026-10-09.md).
-**Evidências visuais:** [painel de telas](docs/evidencias/painel_validacao.jpg).
+**Evidências visuais:** [painel de telas](painel_validacao.jpg).
 
 > Campos marcados com **[GRUPO]** devem ser preenchidos pelos integrantes antes da entrega.
 

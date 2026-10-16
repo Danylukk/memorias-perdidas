@@ -84,7 +84,7 @@ Ambiente: Linux, Python 3.12.14, Pygame 2.6.1, OpenAI SDK 2.54.0. Dependências 
 | Chamada real à API nesta revisão | **Não executada:** não havia configuração local de credencial/modelo neste ambiente |
 | Validação manual no Windows do grupo | **Não executada por esta revisão** |
 
-![Telas reais inspecionadas](docs/evidencias/painel_validacao.jpg)
+![Telas reais inspecionadas](painel_validacao.jpg)
 
 **Distinção de evidências:** execução automatizada de eventos e inspeção de screenshots não equivalem aos testes manuais realizados pelos integrantes. Esta tabela não deve ser copiada como se o grupo tivesse executado manualmente cada cenário. O histórico de HTTP 200 em RELATORIO_MVP.md refere-se à primeira versão; não comprova as opções geradas atuais nem a conversa de Lira com a API real.
 

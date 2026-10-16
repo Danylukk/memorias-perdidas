@@ -1,181 +1,122 @@
-# Memórias Perdidas — CP5 PLN e Front-End
+# Memórias Perdidas — CP5 de Front-End
 
-RPG narrativo dark fantasy em Python/Pygame, continuação do jogo e mockups da CP4.
-A IA produz falas, opções e lembranças; as regras e a progressão continuam sob controle do Python.
+**Disciplina:** Front-End e Mobile Development — FIAP  
+**Professor:** Lucas Tadeu Cunha Rios  
+**Projeto:** Memórias Perdidas — RPG narrativo com IA generativa
 
-**Integrantes:** Thiago Santana Danyluk — RM 562286; Rafael de Paiva Ramos — RM 563978.
+**Integrantes**
+- **Thiago Santana Danyluk** — RM 562286
+- **Rafael de Paiva Ramos** — RM 563978
 
-## Gravação de Front-End — iniciar por duplo clique
+## Vídeo da entrega
 
-No Windows, após atualizar o repositório, execute **`ABRIR_PARA_GRAVAR.cmd`**. O inicializador prepara o ambiente local, verifica a configuração sem exibir credenciais, abre o servidor FastAPI, o Swagger `/docs` e a tela inicial do jogo. Se o modelo ou a chave da OpenAI não estiverem configurados, solicita apenas essa configuração local.
+**[Assistir à demonstração da CP5 de Front-End](https://youtu.be/0yclAM2c9z8)**
 
-- **[Roteiro exato do vídeo e checklist](ROTEIRO_GRAVACAO_FRONTEND.md)**
-- **[Inicializador PowerShell](PREPARAR_PARA_GRAVAR.ps1)**
+O vídeo apresenta a API no Swagger, o consumo da rota durante o jogo e a arquitetura da integração.
 
-O computador deve estar ligado para concluir a preparação local. **Não mostre `.env` na gravação.**
+## Objetivo e arquitetura
 
-## Adaptação para Front-End
+O jogo, implementado com **Python/Pygame**, não chama o serviço externo de inteligência artificial diretamente. Ele usa um cliente HTTP (`requests`) para consultar a **API própria do grupo**, desenvolvida em **FastAPI**.
 
-O jogo agora usa **requests → FastAPI → provider OpenAI**.
-Uma rota de texto, protegida por **X-API-Key**, atende diálogos e lembranças.
-O Swagger fica em **/docs**. A chave da OpenAI existe somente no backend.
-Implementação baseada no enunciado retificado em 11/10 e nos exemplos de aula do professor Lucas.
+```text
+Jogo Pygame
+   │ HTTP POST + X-API-Key
+   ▼
+FastAPI → router /v1/ia-generativa/texto
+   ▼
+Provider OpenAI → serviço de IA generativa
+   │
+   └── resposta narrativa → FastAPI → jogo
+```
 
-- [Requisitos, arquitetura e roteiro do vídeo](ENTREGA_FRONTEND.md)
-- [Diários e checklist original de PLN](ENTREGA_CP5.md)
-- [AI Context Package](AI_CONTEXT_PACKAGE.md)
-- [Validação da adaptação](VALIDACAO_FRONTEND.md)
-- [Vídeo original do MVP](https://youtu.be/nB9UEZMc7IU) — anterior ao FastAPI.
+A modalidade utilizada é **texto** (diálogos e lembranças). O backend concentra a chamada à OpenAI, a validação do corpo recebido, a autenticação e as configurações de CORS. As regras e os atributos do RPG permanecem no jogo.
 
-## Organização
-
-| Caminho | Responsabilidade |
+| Requisito | Implementação |
 | --- | --- |
-| frontend/main.py | Inicialização do Pygame |
-| frontend/game/ | Telas, regras, estado, prompts e cliente HTTP |
-| frontend/assets/ e frontend/data/ | Artes da CP4, dados e roteiro offline |
-| backend/main.py | FastAPI, Swagger e configuração de CORS |
-| backend/routers/ia_generativa.py | Rota de geração de texto |
-| backend/providers/openai_provider.py | Único local que importa o SDK OpenAI |
-| backend/auth.py e backend/models.py | Autenticação e contratos Pydantic |
-| tests/ | Mecânicas, provider, autenticação e integração |
-| main.py | Atalho compatível com o comando antigo |
+| API do grupo em FastAPI | `backend/main.py` |
+| Rota organizada em router | `backend/routers/ia_generativa.py` |
+| Chamada à IA isolada em provider | `backend/providers/openai_provider.py` |
+| Autenticação `X-API-Key` | `backend/auth.py` |
+| CORS configurável | `backend/main.py` |
+| Consumo via HTTP pelo jogo | `frontend/game/systems/api_client.py` |
+| Swagger/OpenAPI | `http://127.0.0.1:8000/docs` |
 
-Frontend e backend têm requirements.txt e .env.example próprios e executam em processos separados.
-O backend pode ser instalado sem Pygame e o frontend sem OpenAI ou FastAPI.
+## Estrutura do repositório
 
-## Instalação — Windows PowerShell
+- `backend/`: API FastAPI, autenticação, schemas e provider de IA.
+- `frontend/`: jogo Pygame, cliente HTTP, imagens e dados.
+- `tests/`: testes de integração, autenticação e mecânicas.
+- `requirements.txt`: dependências para execução e testes.
+- `docs/pln/`: histórico da entrega de PLN, mantido separado desta CP.
 
-Python 3.12 ou superior com suporte às dependências. Na raiz do repositório:
+## Instalação e configuração
 
-~~~powershell
+Requer **Python 3.12 ou superior** compatível com as dependências e uma chave válida da API OpenAI.
+
+Na raiz do repositório, execute no **PowerShell**:
+
+```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-Copy-Item backend/.env.example backend/.env
-Copy-Item frontend/.env.example frontend/.env
-~~~
+Copy-Item backend\.env.example backend\.env
+Copy-Item frontend\.env.example frontend\.env
+```
 
-Crie uma credencial da API do grupo:
+Configure os arquivos locais **sem publicá-los no GitHub**:
 
-~~~powershell
-.\.venv\Scripts\python.exe -c "import secrets; print(secrets.token_urlsafe(32))"
-~~~
-
-Cole o mesmo valor em API_KEY nos dois .env. Essa credencial é diferente da chave da OpenAI.
-
-**backend/.env:**
-
-~~~dotenv
-API_KEY=SUA_CREDENCIAL_DO_GRUPO
+`backend/.env`
+```dotenv
+API_KEY=CHAVE_INTERNA_DO_GRUPO
 OPENAI_API_KEY=SUA_CHAVE_OPENAI
-OPENAI_MODEL=MODELO_DISPONIVEL_NA_SUA_CONTA
+OPENAI_MODEL=MODELO_COMPATIVEL
 CORS_ORIGINS=
-~~~
+```
 
-**frontend/.env:**
-
-~~~dotenv
+`frontend/.env`
+```dotenv
 API_URL=http://127.0.0.1:8000
-API_KEY=SUA_CREDENCIAL_DO_GRUPO
-~~~
+API_KEY=CHAVE_INTERNA_DO_GRUPO
+```
 
-O modelo deve suportar Responses API e Structured Outputs. Não publique os .env.
-Quem já tinha o .env antigo deve copiar OPENAI_API_KEY e OPENAI_MODEL para backend/.env.
-O .env antigo na raiz não é mais usado; o jogo não lê as credenciais da OpenAI.
-Variáveis já definidas no sistema têm precedência sobre os .env.
+A `API_KEY` interna deve ter o **mesmo valor** nos dois arquivos e ser diferente da `OPENAI_API_KEY`. Para gerar uma credencial interna segura:
 
-## Executar em dois terminais
+```powershell
+.\.venv\Scripts\python.exe -c "import secrets; print(secrets.token_urlsafe(32))"
+```
 
-**Terminal 1, na raiz:**
+A chave da OpenAI permanece **somente no backend**. O modelo configurado deve aceitar Responses API e saída estruturada. Os arquivos `.env` estão no `.gitignore`.
 
-~~~powershell
+## Como executar
+
+Abra **dois terminais**, ambos na raiz do repositório:
+
+**Terminal 1 — API**
+
+```powershell
 .\.venv\Scripts\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
-~~~
+```
 
-Abra http://127.0.0.1:8000/docs. Use **Authorize** com a API_KEY do grupo e teste a rota.
+Acesse **http://127.0.0.1:8000/docs** para visualizar a rota `POST /v1/ia-generativa/texto` no Swagger. A rota exige autenticação `X-API-Key`.
 
-**Terminal 2, na raiz:**
+**Terminal 2 — jogo**
 
-~~~powershell
+```powershell
 .\.venv\Scripts\python.exe frontend/main.py
-~~~
+```
 
-O comando antigo **python main.py** continua funcionando no ambiente preparado.
-Há também os atalhos **iniciar_backend.ps1** e **iniciar_jogo.ps1**.
+No menu do jogo, ative a IA em **Configurações**, inicie **NOVO JOGO** e interaja com o soldado Darian. A comunicação com a API pode ser observada no Terminal 1 pelo registro `POST /v1/ia-generativa/texto ... 200 OK`.
 
-Para ambientes separados, instale **backend/requirements.txt** e **frontend/requirements.txt** em seus
-respectivos ambientes. Inicie o backend a partir da raiz com **python -m uvicorn backend.main:app**;
-inicie o jogo com **python frontend/main.py**.
-
-## Contrato da API
-
-**POST /v1/ia-generativa/texto**, header **X-API-Key** com a credencial do grupo.
-
-~~~json
-{
-  "instructions": "Interprete Darian em português. Responda em até duas frases.",
-  "context": "Kael ajudou o soldado ferido nas ruínas.",
-  "response_schema": null,
-  "max_output_tokens": 512
-}
-~~~
-
-Sucesso: **200**, corpo **{"texto": "fala retornada pelo modelo"}**.
-Nos turnos, o jogo também envia o JSON Schema do MVP e o provider preserva Structured Outputs.
-O modelo é escolhido no backend.
-
-| Código | Significado |
-| --- | --- |
-| 401 | Credencial do grupo ausente ou incorreta |
-| 422 | Corpo inválido ou fora dos limites do contrato |
-| 502 | Falha na geração externa |
-| 503 | Credencial/configuração ausente no backend |
-
-O provider tem timeout de 25 s e não faz retries automáticos.
-O cliente tem timeout de 30 s e não segue redirecionamentos com a credencial.
-CORS aceita somente origens explícitas em CORS_ORIGINS, separadas por vírgula.
-Pygame/requests não exige CORS; para ele, a lista pode ficar vazia.
-
-## Como jogar
-
-1. **NOVO JOGO:** Kael encontra Darian e as quatro escolhas do mockup.
-2. **Darian:** cinco turnos; a IA responde e sugere quatro opções, mantendo a intenção validada.
-3. **Exploração:** caminhe com as setas ou clique; investigue com E ou os botões.
-4. **Lira:** três turnos; sua abertura e confiança refletem como Kael tratou Darian.
-5. **Decisão:** escolha em quem confiar e veja o perfil e o desfecho de Kael.
-
-**TAB:** perfil; **F:** fragmentos; **Esc:** menu; **R:** tentar a IA novamente após falha.
-Textos longos usam PgUp/PgDn ou roda do mouse.
-O menu contém Continuar, Fragmentos e Configurações.
-As regras de atributos e confiança continuam em Python. A IA não executa código nem define valores.
-Os quatro fragmentos da CP4 podem ser recuperados; oito espaços continuam bloqueados.
-Saves locais ficam em **frontend/save/**, fora do Git.
-
-## Modo offline
-
-Sem API_KEY do grupo no frontend ou com a IA desligada em Configurações, usa-se o roteiro offline.
-Se o backend estiver desligado, a chave estiver incorreta ou a OpenAI falhar, aquela geração usa
-o fallback existente, identificado na interface. A nova tentativa continua manual, sem reaplicar efeitos.
-
-**Roteiro offline não comprova geração online.** Para demonstrar IA real, configure os dois .env,
-ligue a IA e observe o POST 200 no backend junto com a fala/opções retornadas no jogo.
+O jogo também possui um **roteiro offline de contingência**. A execução offline não comprova a integração com a IA: para essa evidência, é preciso receber uma resposta online pela rota.
 
 ## Testes
 
-~~~powershell
+```powershell
 .\.venv\Scripts\python.exe -m compileall -q backend frontend tests main.py
 .\.venv\Scripts\python.exe -m pytest -q
-~~~
+```
 
-Os testes simulam o provider, bloqueiam rede externa e isolam os saves.
-Incluem jogo → cliente HTTP → FastAPI em memória, autenticação, CORS, JSON Schema,
-lembranças, indisponibilidade e as mecânicas/telas anteriores.
-Não substituem uma chamada real à OpenAI.
+Os testes automatizados usam respostas simuladas quando necessário e não substituem a demonstração da chamada real. **[Vídeo da integração funcionando](https://youtu.be/0yclAM2c9z8)**.
 
-## Entrega
+---
 
-Use **ENTREGA_CP5_FRONTEND.txt** e o roteiro em **ENTREGA_FRONTEND.md**.
-O vídeo antigo de PLN não demonstra a API nova.
-Os campos **[GRUPO]**, a explicação própria e os resultados manuais em ENTREGA_CP5.md
-devem ser preenchidos pelos integrantes. As artes e a identidade visual da CP4 foram preservadas.
-Não há banco de dados, Docker, deploy, observabilidade ou cadastro de usuários nesta adaptação.
+**Entrega de Front-End:** código completo do jogo e do backend neste repositório, instruções no README, integrantes identificados e demonstração em vídeo.
