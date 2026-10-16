@@ -1,250 +1,181 @@
-# Memórias Perdidas
+# Memórias Perdidas — CP5 PLN e Front-End
 
-MVP acadêmico de **Processamento de Linguagem Natural, Chatbots e Agentes Virtuais — FIAP**.
-RPG narrativo dark fantasy: enquanto Kael descobre quem era, o jogador decide quem ele será.
+RPG narrativo dark fantasy em Python/Pygame, continuação do jogo e mockups da CP4.
+A IA produz falas, opções e lembranças; as regras e a progressão continuam sob controle do Python.
 
-## Entrega da CP5
+**Integrantes:** Thiago Santana Danyluk — RM 562286; Rafael de Paiva Ramos — RM 563978.
 
-- **Repositório público / versão de entrega:** [branch main](https://github.com/Danylukk/memorias-perdidas/tree/main).
-- **Vídeo de demonstração:** [Memórias Perdidas — MVP CP5](https://youtu.be/nB9UEZMc7IU).
-- **Diário de Vibe Coding, mudanças e checklist:** [ENTREGA_CP5.md](ENTREGA_CP5.md).
-- **Relatório de validação técnica e limites:** [VALIDACAO_CP5_2026-10-09.md](VALIDACAO_CP5_2026-10-09.md).
-- **Evidências visuais da revisão:** [painel de telas](docs/evidencias/painel_validacao.jpg).
-- **Histórico da primeira versão:** [RELATORIO_MVP.md](RELATORIO_MVP.md).
+## Gravação de Front-End — iniciar por duplo clique
 
-Código, assets, dados e testes estão nesta branch. A instalação e a execução estão descritas abaixo.
-Os campos **[GRUPO]** de `ENTREGA_CP5.md` ainda devem ser preenchidos pelos integrantes com sua
-explicação própria do código, revisão e resultados de testes manuais. O link do vídeo foi fornecido
-pelo integrante; sua duração e conteúdo não foram verificados pela revisão automatizada.
+No Windows, após atualizar o repositório, execute **`ABRIR_PARA_GRAVAR.cmd`**. O inicializador prepara o ambiente local, verifica a configuração sem exibir credenciais, abre o servidor FastAPI, o Swagger `/docs` e a tela inicial do jogo. Se o modelo ou a chave da OpenAI não estiverem configurados, solicita apenas essa configuração local.
 
-## Requisitos e instalação
+- **[Roteiro exato do vídeo e checklist](ROTEIRO_GRAVACAO_FRONTEND.md)**
+- **[Inicializador PowerShell](PREPARAR_PARA_GRAVAR.ps1)**
 
-Python 3.11+ com suporte às dependências. Ambiente validado: **Python 3.12.14 / Windows**.
-Pygame 2.6.1, SDK oficial OpenAI, python-dotenv e pytest estão em `requirements.txt`.
-Para reproduzir o projeto, prefira Python 3.12. A revisão de 09/10/2026 também foi executada
-em Linux com Python 3.12.14; o ambiente virtual deve ser criado após obter o código.
+O computador deve estar ligado para concluir a preparação local. **Não mostre `.env` na gravação.**
 
-Em um terminal PowerShell na pasta do projeto, para preparar um ambiente novo
-(o comando `python` deve apontar para a versão escolhida):
+## Adaptação para Front-End
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
+O jogo agora usa **requests → FastAPI → provider OpenAI**.
+Uma rota de texto, protegida por **X-API-Key**, atende diálogos e lembranças.
+O Swagger fica em **/docs**. A chave da OpenAI existe somente no backend.
+Implementação baseada no enunciado retificado em 11/10 e nos exemplos de aula do professor Lucas.
 
-Após instalar as dependências, ative o ambiente virtual. Também é possível executar
-diretamente `.\.venv\Scripts\python.exe`, sem depender da ativação.
+- [Requisitos, arquitetura e roteiro do vídeo](ENTREGA_FRONTEND.md)
+- [Diários e checklist original de PLN](ENTREGA_CP5.md)
+- [AI Context Package](AI_CONTEXT_PACKAGE.md)
+- [Validação da adaptação](VALIDACAO_FRONTEND.md)
+- [Vídeo original do MVP](https://youtu.be/nB9UEZMc7IU) — anterior ao FastAPI.
 
-## Configuração da API
+## Organização
 
-Se ainda não existir `.env`, copie o exemplo:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-Edite o `.env` local e preencha `OPENAI_API_KEY` com sua credencial e `OPENAI_MODEL`
-com o identificador de um modelo de texto disponível à sua conta e compatível com
-a Responses API. Ambos são obrigatórios. O exemplo permanece vazio; a configuração
-local foi fornecida pelo responsável pelo projeto. Reinicie o jogo após configurar.
-
-Variáveis já definidas no ambiente têm precedência sobre o `.env`.
-Não publique o `.env`: ele e suas variantes estão no `.gitignore`; `.env.example` é permitido.
-Sem chave e modelo configurados, o jogo roda inteiro no **roteiro offline** (ver abaixo), sem acessar a rede.
-
-## Executar
-
-Com o ambiente ativado:
-
-```powershell
-python main.py
-```
-
-Sem ativação:
-
-```powershell
-.\.venv\Scripts\python.exe main.py
-```
-
-## Fluxo do jogo (fiel à CP4)
-
-As três telas seguem os mockups da CP4 (16:9): **Menu Principal** (Figura 4), **Gameplay** (Figura 5)
-e **Fragmentos de Memória** (Figura 6). Todos os rodapés identificam os assets gerados por IA.
-
-**Menu:** NOVO JOGO, CONTINUAR, FRAGMENTOS, CONFIGURAÇÕES e SAIR (mouse, ↑/↓ + Enter; Esc sai).
-CONTINUAR retoma a última partida salva; FRAGMENTOS mostra todas as memórias já recuperadas. Textos longos são paginados com
-PgUp/PgDn ou a roda do mouse, com a página indicada no detalhe.
-
-A jornada segue a premissa e o objetivo da CP4 (§1.3 e §1.7):
-
-1. **Despertar — Darian (5 turnos).** Kael acorda nas ruínas; Darian pergunta **“Você... está vivo?”**
-   com as 4 escolhas do mockup (Quem é você? / Você me conhece? / Ajudar o soldado / Ir embora).
-   A cada escolha, o LLM gera a **fala de Darian** e **4 novas respostas curtas para Kael**, na mesma chamada.
-2. **Exploração das ruínas.** Kael caminha pelo cenário (←/→ ou clique) e investiga locais e objetos
-   (E ou botões 1–5): o **estandarte rasgado** desperta *A Ordem de Arkan*; as **espadas cravadas**
-   despertam *A Batalha*; o **soldado caído** e o **medalhão** de Kael alteram seu perfil. O texto de
-   cada lembrança é escrito pelo LLM.
-3. **Lira (3 turnos).** A curandeira que conhece Kael e evita revelar tudo o que sabe. Ela **sabe como Kael
-   tratou Darian** (caminho predominante da conversa: ajudou, interrogou, ameaçou ou abandonou): isso muda
-   a fala de abertura dela, a confiança inicial (±10) e entra no contexto enviado ao LLM
-   (`historia_da_partida`).
-4. **Decisão final:** Confiar em Darian, em Lira, nos dois ou seguir sozinho.
-5. **Desfecho:** quem Kael se tornou (atributo dominante), o destino conforme a confiança conquistada e
-   os fragmentos recuperados.
-
-Durante a conversa, as opções ficam bloqueadas e aparece **“Darian está pensando...”** (thread separada).
-Cenas e telas trocam com um fade. Os efeitos de cada escolha aparecem acima de Kael; **TAB** abre o perfil completo; **F** abre os Fragmentos;
-**Esc** volta ao menu (o estado narrativo é salvo; a posição exata na exploração não é persistida). O botão de fechar a janela funciona durante a geração.
-
-### Regras (sempre em Python)
-
-A IA escreve o texto, mas nunca define números. Cada opção gerada vem marcada com uma **intenção**
-de uma lista fixa, validada por JSON Schema; o Python converte a intenção em efeitos:
-
-| Intenção | Efeitos |
+| Caminho | Responsabilidade |
 | --- | --- |
-| curiosidade | Curiosidade +1 |
-| empatia | Empatia +1, Energia −5, Confiança +5 |
-| lealdade | Lealdade +1, Confiança +5 |
-| agressividade | Agressividade +1, Vida −5, Confiança −10 |
-| egoismo | Egoísmo +1, Confiança −5 |
+| frontend/main.py | Inicialização do Pygame |
+| frontend/game/ | Telas, regras, estado, prompts e cliente HTTP |
+| frontend/assets/ e frontend/data/ | Artes da CP4, dados e roteiro offline |
+| backend/main.py | FastAPI, Swagger e configuração de CORS |
+| backend/routers/ia_generativa.py | Rota de geração de texto |
+| backend/providers/openai_provider.py | Único local que importa o SDK OpenAI |
+| backend/auth.py e backend/models.py | Autenticação e contratos Pydantic |
+| tests/ | Mecânicas, provider, autenticação e integração |
+| main.py | Atalho compatível com o comando antigo |
 
-Escolhas fixas: Quem é você? (Curiosidade +1), Você me conhece? (Curiosidade +2), Ajudar o soldado
-(Empatia +2, Lealdade +1, Confiança +10), Ir embora (Egoísmo +2, Confiança −10) e, da tabela da CP4 §1.6,
-Perguntar sobre o passado (Curiosidade +2) e Ameaçar Darian (Agressividade +2, Empatia −1, Vida −10,
-Confiança −15). Investigar um objeto que desperta memória custa Energia −5; o soldado caído dá
-Empatia +1 e o medalhão, Curiosidade +1 (uma vez cada). Valores entre 0 e 100.
-Confiança inicial: Darian 20; Lira 30, ajustada pelo tratamento dado a Darian
-(ajudou +10, interrogou 0, ameaçou −5, abandonou −10).
+Frontend e backend têm requirements.txt e .env.example próprios e executam em processos separados.
+O backend pode ser instalado sem Pygame e o frontend sem OpenAI ou FastAPI.
 
-| Fragmento (mockup) | Origem | Como desbloquear |
-| --- | --- | --- |
-| A Batalha | local | Examinar as espadas cravadas |
-| A Ordem de Arkan | objeto | Investigar o estandarte rasgado |
-| Lira | personagem | Confiança de Lira ≥ 45 |
-| Darian | personagem | Confiança de Darian ≥ 40 |
+## Instalação — Windows PowerShell
 
-Os outros 8 espaços da tela (12 no total, como no mockup) aparecem bloqueados.
+Python 3.12 ou superior com suporte às dependências. Na raiz do repositório:
 
-**Desfecho:** o atributo mais alto define o título (Protetor, Companheiro, Buscador, Implacável ou
-Sobrevivente; empate segue essa ordem). Confiar em Darian exige confiança ≥ 30; em Lira, ≥ 40;
-nos dois, ambas — caso contrário o desfecho mostra a recusa ou a desconfiança.
+~~~powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+Copy-Item backend/.env.example backend/.env
+Copy-Item frontend/.env.example frontend/.env
+~~~
 
-### Roteiro offline e falhas da IA
+Crie uma credencial da API do grupo:
 
-`data/roteiro_offline.json` contém uma conversa **ramificada** para Darian e Lira, escrita com o Claude Code
-e editável pelo grupo. Cada escolha leva a um **caminho** conforme a intenção: empatia/lealdade → **Cuidado**,
-curiosidade → **Perguntas**, agressividade → **Confronto**, egoísmo → **Abandono**.
+~~~powershell
+.\.venv\Scripts\python.exe -c "import secrets; print(secrets.token_urlsafe(32))"
+~~~
 
-- **Sem chave/modelo no `.env`** (ou com a IA desligada em Configurações): o menu mostra “Diálogos: roteiro
-  offline” e a partida inteira segue o roteiro, identificado na caixa de diálogo. Nenhuma chamada de rede.
-- **Com a API configurada:** se uma geração falhar (sem internet, timeout, resposta inválida), aquele turno
-  segue pelo roteiro com o aviso “IA indisponível — roteiro offline”; **Tentar IA [R]** faz nova solicitação
-  sem reaplicar efeitos. Não há tentativas automáticas.
-- Lembranças sem IA usam o texto do roteiro — para *A Batalha*, o texto gerado com ChatGPT na CP4 (§2.2.2).
+Cole o mesmo valor em API_KEY nos dois .env. Essa credencial é diferente da chave da OpenAI.
 
-### Configurações e save
+**backend/.env:**
 
-CONFIGURAÇÕES liga/desliga os diálogos com IA, a tela cheia e o texto animado. Progresso, galeria de
-fragmentos e configurações ficam em `save/` (JSON local, fora do Git). Ao terminar a jornada, o
-progresso é apagado, mas as memórias continuam na galeria.
+~~~dotenv
+API_KEY=SUA_CREDENCIAL_DO_GRUPO
+OPENAI_API_KEY=SUA_CHAVE_OPENAI
+OPENAI_MODEL=MODELO_DISPONIVEL_NA_SUA_CONTA
+CORS_ORIGINS=
+~~~
 
-## Assets
+**frontend/.env:**
 
-Todos os visuais são os aprovados na CP4 (gerados com ChatGPT — geração de imagens):
+~~~dotenv
+API_URL=http://127.0.0.1:8000
+API_KEY=SUA_CREDENCIAL_DO_GRUPO
+~~~
 
-- `assets/characters/`: Kael, Darian e **Lira** (extraída em resolução original do PDF da CP4, Figura 2).
-- `assets/backgrounds/`: cenário das ruínas; `assets/ui/`: logo, botão, caixa de diálogo e cristal.
-- `assets/fragments/`: artes dos fragmentos e dos espaços bloqueados, recortadas do mockup da Figura 6.
-- `assets/portraits/`: retratos recortados dos sprites oficiais, para o HUD e a caixa de diálogo.
+O modelo deve suportar Responses API e Structured Outputs. Não publique os .env.
+Quem já tinha o .env antigo deve copiar OPENAI_API_KEY e OPENAI_MODEL para backend/.env.
+O .env antigo na raiz não é mais usado; o jogo não lê as credenciais da OpenAI.
+Variáveis já definidas no sistema têm precedência sobre os .env.
 
-Nenhuma imagem nova foi gerada; os textos da interface são renderizados pelo jogo (CP4 §6.3).
+## Executar em dois terminais
 
-## Arquitetura
+**Terminal 1, na raiz:**
 
-```text
-GameplayScreen → Journey (fases: darian → exploração → lira → decisão → fim)
-                    ↓
-                 Encounter → choices.apply_effects (estado atualizado pelo Python)
-                    ↓ thread + fila de resultados
-                 DialogueService ── PromptBuilder ── OpenAIClient → Responses API (JSON Schema)
-                    ↓ falha ou modo offline
-                 script.py (roteiro ramificado)
-                    ↓
-                 validação → fila → GameplayScreen → save/ (JSON)
-```
+~~~powershell
+.\.venv\Scripts\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+~~~
 
-- `game/models/`: estado imutável de Kael e dos NPCs. JSONs de `data/` são dados iniciais, não saves.
-- `game/systems/journey.py`: fases da partida, exploração (pontos de interesse), decisão e save.
-- `game/systems/encounter.py`: conversa em turnos com um NPC; decide os fragmentos desbloqueados
-  e coordena a thread. Somente o loop principal atualiza o estado e desenha.
-- `game/systems/choices.py`: escolhas fixas, tabela intenção → efeitos e serialização.
-- `game/systems/script.py` + `data/roteiro_offline.json`: roteiro ramificado por personagem e caminho.
-- `game/systems/fragments.py`: os 4 fragmentos do mockup, condições e textos de reserva.
-- `game/systems/ending.py`: perfil de Kael e desfecho da decisão.
-- `game/systems/prompt_builder.py`: regras fixas por personagem e contexto JSON com o estado atualizado.
-- `game/systems/openai_client.py`: único local que usa o SDK. Timeout de 25 s, `max_retries=0`,
-  `store=False`, Structured Outputs nos turnos. Apenas `output_text` sai do adaptador.
-- `game/systems/dialogue.py`: `converse` valida o JSON do turno (fala + 4 opções de até 36 caracteres,
-  sem repetição); rejeita respostas vazias, longas, com mais frases que o permitido ou com metalinguagem.
-- `game/systems/save.py`: progresso, galeria e configurações em JSON.
-- `game/screens/`: menu, gameplay, fragmentos, configurações e desfecho. As telas não conhecem a OpenAI.
+Abra http://127.0.0.1:8000/docs. Use **Authorize** com a API_KEY do grupo e teste a rota.
 
-O conhecimento privado dos NPCs não é serializado integralmente. O prompt recebe apenas fatos
-conhecidos **e explicitamente permitidos**, a política de revelação e os temas proibidos.
-`pode_revelar_passado` permanece `false` para Darian e Lira. Nenhuma saída da IA é executada,
-convertida em atributos ou utilizada para liberar progressão.
+**Terminal 2, na raiz:**
 
-As verificações textuais são guardrails simples: **não provam ausência de alucinações semânticas**.
-Mesmo uma fala inadequada não altera o estado do jogo. A revisão narrativa com a API real continua necessária.
+~~~powershell
+.\.venv\Scripts\python.exe frontend/main.py
+~~~
 
-Referências usadas na integração: [Responses API](https://developers.openai.com/api/reference/python/resources/responses/methods/create)
-e [SDK Python — retries e timeouts](https://developers.openai.com/api/reference/python).
+O comando antigo **python main.py** continua funcionando no ambiente preparado.
+Há também os atalhos **iniciar_backend.ps1** e **iniciar_jogo.ps1**.
 
-## Testes e validação
+Para ambientes separados, instale **backend/requirements.txt** e **frontend/requirements.txt** em seus
+respectivos ambientes. Inicie o backend a partir da raiz com **python -m uvicorn backend.main:app**;
+inicie o jogo com **python frontend/main.py**.
 
-Com o ambiente ativado, execute nesta ordem:
+## Contrato da API
 
-```powershell
-python -m compileall -q game tests main.py
-pytest -q
-```
+**POST /v1/ia-generativa/texto**, header **X-API-Key** com a credencial do grupo.
 
-A suíte usa mocks e bloqueia conexões de rede por uma fixture automática. Nenhuma chamada real é feita
-por `pytest -q`. Os testes de interface usam o driver SDL `dummy`, sem abrir janela.
+~~~json
+{
+  "instructions": "Interprete Darian em português. Responda em até duas frases.",
+  "context": "Kael ajudou o soldado ferido nas ruínas.",
+  "response_schema": null,
+  "max_output_tokens": 512
+}
+~~~
 
-Para testar somente regras, modelos e prompt, sem inicializar o Pygame:
+Sucesso: **200**, corpo **{"texto": "fala retornada pelo modelo"}**.
+Nos turnos, o jogo também envia o JSON Schema do MVP e o provider preserva Structured Outputs.
+O modelo é escolhido no backend.
 
-```powershell
-pytest -q tests/test_state.py tests/test_choices.py tests/test_prompt_builder.py tests/test_cp5_mechanics.py tests/test_encounter.py
-```
+| Código | Significado |
+| --- | --- |
+| 401 | Credencial do grupo ausente ou incorreta |
+| 422 | Corpo inválido ou fora dos limites do contrato |
+| 502 | Falha na geração externa |
+| 503 | Credencial/configuração ausente no backend |
 
-## Validação manual real
+O provider tem timeout de 25 s e não faz retries automáticos.
+O cliente tem timeout de 30 s e não segue redirecionamentos com a credencial.
+CORS aceita somente origens explícitas em CORS_ORIGINS, separadas por vírgula.
+Pygame/requests não exige CORS; para ele, a lista pode ficar vazia.
 
-Depois de configurar a credencial e o modelo, execute o jogo e escolha **Ajudar o soldado**.
-Observe Empatia **2**, Lealdade **1**, Confiança **30**, a mensagem de espera e, finalmente,
-a fala gerada. Fechar a janela deve continuar possível durante a espera.
-Cada escolha faz uma requisição (fala + opções) e, se desbloquear um fragmento, mais uma por fragmento.
-Uma partida completa faz de 8 a 12 requisições; uma nova tentativa explícita pode gerar nova cobrança.
+## Como jogar
 
-Na primeira versão do MVP, uma chamada real com **gpt-5.6-luna**, usando **Ajudar o soldado**, retornou HTTP 200.
-Foi corrigida a contagem de frases quando a fala vem entre aspas externas; a mesma resposta
-recebida foi validada e exibida na janela nativa, sem nova solicitação. O estado permaneceu
-Empatia 2, Lealdade 1, Confiança 30. Evidências e limites estão no relatório.
+1. **NOVO JOGO:** Kael encontra Darian e as quatro escolhas do mockup.
+2. **Darian:** cinco turnos; a IA responde e sugere quatro opções, mantendo a intenção validada.
+3. **Exploração:** caminhe com as setas ou clique; investigue com E ou os botões.
+4. **Lira:** três turnos; sua abertura e confiança refletem como Kael tratou Darian.
+5. **Decisão:** escolha em quem confiar e veja o perfil e o desfecho de Kael.
 
-## Limites desta entrega
+**TAB:** perfil; **F:** fragmentos; **Esc:** menu; **R:** tentar a IA novamente após falha.
+Textos longos usam PgUp/PgDn ou roda do mouse.
+O menu contém Continuar, Fragmentos e Configurações.
+As regras de atributos e confiança continuam em Python. A IA não executa código nem define valores.
+Os quatro fragmentos da CP4 podem ser recuperados; oito espaços continuam bloqueados.
+Saves locais ficam em **frontend/save/**, fora do Git.
 
-A jornada cobre um capítulo: Darian, exploração das ruínas, Lira e a decisão final. Dos 12 fragmentos,
-os 4 do mockup podem ser recuperados; os demais aparecem bloqueados. A exploração é lateral, em uma
-única cena. Não há combate. As mudanças em relação à CP4 estão justificadas em `ENTREGA_CP5.md`,
-junto com o Diário de Vibe Coding e o checklist de testes. O histórico da primeira entrega do MVP
-está em `RELATORIO_MVP.md`.
+## Modo offline
 
-## Revisão de entrega — 09/10/2026
+Sem API_KEY do grupo no frontend ou com a IA desligada em Configurações, usa-se o roteiro offline.
+Se o backend estiver desligado, a chave estiver incorreta ou a OpenAI falhar, aquela geração usa
+o fallback existente, identificado na interface. A nova tentativa continua manual, sem reaplicar efeitos.
 
-A revisão sobre `paiva` passou em **94 testes**, incluindo 13 regressões de persistência,
-leitura dos textos, limites do HUD e créditos. A execução e inspeção visual usaram SDL
-`dummy`; não substituem a execução manual dos integrantes no computador de apresentação.
-Nenhuma chamada real à API foi realizada nesta revisão. Veja `VALIDACAO_CP5_2026-10-09.md`
-para as evidências, a comparação de branches e as pendências de vídeo e autoria do grupo.
+**Roteiro offline não comprova geração online.** Para demonstrar IA real, configure os dois .env,
+ligue a IA e observe o POST 200 no backend junto com a fala/opções retornadas no jogo.
+
+## Testes
+
+~~~powershell
+.\.venv\Scripts\python.exe -m compileall -q backend frontend tests main.py
+.\.venv\Scripts\python.exe -m pytest -q
+~~~
+
+Os testes simulam o provider, bloqueiam rede externa e isolam os saves.
+Incluem jogo → cliente HTTP → FastAPI em memória, autenticação, CORS, JSON Schema,
+lembranças, indisponibilidade e as mecânicas/telas anteriores.
+Não substituem uma chamada real à OpenAI.
+
+## Entrega
+
+Use **ENTREGA_CP5_FRONTEND.txt** e o roteiro em **ENTREGA_FRONTEND.md**.
+O vídeo antigo de PLN não demonstra a API nova.
+Os campos **[GRUPO]**, a explicação própria e os resultados manuais em ENTREGA_CP5.md
+devem ser preenchidos pelos integrantes. As artes e a identidade visual da CP4 foram preservadas.
+Não há banco de dados, Docker, deploy, observabilidade ou cadastro de usuários nesta adaptação.

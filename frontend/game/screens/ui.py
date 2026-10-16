@@ -246,7 +246,8 @@ def credits_footer(surface, items, quote=True):
     pygame.draw.line(surface, (70, 58, 38), FOOTER.topleft, FOOTER.topright)
     if items:
         label(surface, "Assets gerados por IA:", (22, FOOTER.centery - 9), 15, TEXT)
-    start, end = 200, (1080 if quote else SIZE[0] - 18)
+    start = max(200, 22 + font(15).size("Assets gerados por IA:")[0] + 18)
+    end = 1080 if quote else SIZE[0] - 18
     cell_width = (end - start) // max(1, len(items))
     for index, (image, text) in enumerate(items):
         x = start + index * cell_width
@@ -256,8 +257,11 @@ def credits_footer(surface, items, quote=True):
         size = 14
         while size > 10 and any(font(size).size(line)[0] > cell_width - 72 for line in lines):
             size -= 1
+        line_height = max(font(size, False, False).render(line, True, MUTED).get_height()
+                          for line in lines) + 2
+        top = FOOTER.centery - len(lines) * line_height // 2
         for row, line in enumerate(lines):
-            label(surface, line, (thumb.right + 10, FOOTER.centery - 9 * len(lines) + row * 18), size, MUTED)
+            label(surface, line, (thumb.right + 10, top + row * line_height), size, MUTED)
     if quote:
         label(surface, "“ALGUMAS MEMÓRIAS", (1180, FOOTER.y + 16), 14, MUTED, align="center")
         label(surface, "NUNCA MORREM.”", (1180, FOOTER.y + 34), 14, MUTED, align="center")

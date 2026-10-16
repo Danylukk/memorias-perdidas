@@ -14,17 +14,17 @@ class ConfigurationError(Exception):
 @dataclass(frozen=True)
 class Settings:
     api_key: str = field(default="", repr=False)
-    model: str = ""
-    timeout: float = 25.0
+    api_url: str = "http://127.0.0.1:8000"
+    timeout: float = 30.0
 
     @classmethod
     def from_env(cls) -> "Settings":
         load_dotenv(PROJECT_ROOT / ".env", override=False)
         return cls(
-            api_key=os.getenv("OPENAI_API_KEY", "").strip(),
-            model=os.getenv("OPENAI_MODEL", "").strip(),
+            api_key=os.getenv("API_KEY", "").strip(),
+            api_url=os.getenv("API_URL", "http://127.0.0.1:8000").strip(),
         )
 
     def validate(self) -> None:
-        if not self.api_key or not self.model:
-            raise ConfigurationError("Configure OPENAI_API_KEY e OPENAI_MODEL no .env e reinicie o jogo.")
+        if not self.api_key or not self.api_url:
+            raise ConfigurationError("Configure API_URL e API_KEY no frontend/.env e reinicie o jogo.")

@@ -18,7 +18,7 @@ from game.systems.encounter import Encounter
 from game.systems.ending import DECISIONS, compute_ending
 from game.systems.fragments import FRAGMENTS, Memory, get_fragment, newly_unlocked
 from game.systems.journey import DARIAN_OUTCOMES, HOTSPOTS, Journey, darian_outcome, load_gallery, load_progress
-from game.systems.openai_client import OpenAIClient
+from game.systems.api_client import NarrativeAPIClient
 from game.systems.prompt_builder import PromptBuilder, TURN_SCHEMA
 from game.systems.script import BRANCH_OF_INTENT, load_script, opening, scripted_turn, total_turns
 
@@ -216,16 +216,14 @@ def test_turn_prompt_is_built_for_each_character():
     assert "a Ordem de Arkan" in context["revelacao"]["topicos_bloqueados"]
 
 
-def test_openai_client_sends_json_schema(monkeypatch):
-    factory = MagicMock()
-    monkeypatch.setattr("game.systems.openai_client.OpenAI", factory)
-    monkeypatch.setattr(Settings, "validate", lambda self: None)
-    sdk = factory.return_value.__enter__.return_value
-    sdk.responses.create.return_value = SimpleNamespace(status="completed", output_text=turn_json())
-    result = DialogueService(OpenAIClient(Settings(model="m"))).converse(new_game(), get_choice(1), (), 1010, 5)
+def test_api_client_sends_json_schema(monkeypatch):
+    post = MagicMock()
+    post.return_value.status_code = 200
+    post.return_value.json.return_value = {"texto": turn_json()}
+    monkeypatch.setattr("game.systems.api_client.requests.post", post)
+    result = DialogueService(NarrativeAPIClient(Settings(api_key="teste"))).converse(new_game(), get_choice(1), (), 1010, 5)
     assert result.ok and len(result.options) == 4
-    fmt = sdk.responses.create.call_args.kwargs["text"]["format"]
-    assert fmt["type"] == "json_schema" and fmt["strict"] is True
+    assert post.call_args.kwargs["json"]["response_schema"] == TURN_SCHEMA
 
 
 # --- Fragmentos ---
@@ -240,7 +238,7 @@ def test_character_fragments_unlock_by_trust():
 
 
 def test_fragment_prompt_and_validation():
-    client = MagicMock(spec=OpenAIClient)
+    client = MagicMock(spec=NarrativeAPIClient)
     client.generate.return_value = "Velas acesas. Figuras encapuzadas. Uma cruz dourada. Um juramento."
     result = DialogueService(client).remember(new_game(), get_fragment("ordem_de_arkan"))
     assert result.ok

@@ -15,3 +15,5 @@ memorias_perdidas_pacote_completo/
 Thumbs.db
 
 save/
+**/save/
+**/.venv/
